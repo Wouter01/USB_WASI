@@ -1,0 +1,20 @@
+[package]
+name = "usb-component-wasi-guest"
+version = "0.1.0"
+edition = "2021"
+
+[package.metadata.component]
+package = "component:usb-component-wasi-guest"
+adapter = "/Users/wouter/Downloads/wasi_snapshot_preview1.command.wasm"
+
+[package.metadata.component.target]
+path = "wit"
+
+[package.metadata.component.target.dependencies]
+"component:usb" = { path = "../usb_component_wasi/wit" }
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cargo-component-bindings = "0.5.0"

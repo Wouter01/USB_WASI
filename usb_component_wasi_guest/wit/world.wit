@@ -1,0 +1,6 @@
+package my:comp;
+
+
+world root {
+	import component:usb/device@0.1.0;
+}

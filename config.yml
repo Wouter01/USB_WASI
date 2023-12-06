@@ -1,0 +1,3 @@
+definitions: [
+  target/wasm32-wasi/release/usb_component_wasi.wasm
+ ]

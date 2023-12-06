@@ -1,0 +1,5 @@
+[workspace]
+members = [
+	"usb_component_wasi",
+	"usb_component_wasi_guest"
+]

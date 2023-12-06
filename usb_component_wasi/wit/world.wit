@@ -1,0 +1,14 @@
+package component:usb@0.1.0;
+
+interface device {
+    resource device {
+        constructor(init: list<u8>);
+        test: func() -> string;
+    }
+}
+
+/// An example world for the component to target.
+world usb {
+    export device;
+    
+}
