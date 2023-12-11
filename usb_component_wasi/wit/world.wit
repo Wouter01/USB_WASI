@@ -1,7 +1,7 @@
 package component:usb@0.1.0;
 
 interface device {
-    resource device {
+    resource usb-device {
         constructor(init: list<u8>);
         test: func() -> string;
     }

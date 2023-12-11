@@ -1,0 +1,23 @@
+package component:usb@0.1.0;
+
+interface device {
+    record properties {
+        device-class: u32
+    }
+
+    resource usb-device {
+        //constructor(init: list<u8>);
+        test: func() -> string;
+        
+        properties: func() -> properties;
+        
+    }
+    
+    get-devices: func() -> list<usb-device>;
+}
+
+/// An example world for the component to target.
+world usb {
+    import device;
+    export device;
+}

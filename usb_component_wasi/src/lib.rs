@@ -1,14 +1,11 @@
 cargo_component_bindings::generate!();
 
+pub mod device;
 
-use crate::bindings::exports::component::usb::device::GuestDevice;
+use crate::bindings::exports::component::usb::device::GuestUsbDevice;
+pub use crate::device::UsbDevice;
 
-pub struct Device {
-    
-}
-
-
-impl GuestDevice for Device {
+impl GuestUsbDevice for UsbDevice {
     fn test(&self) -> String {
         "boe".to_string()
     }

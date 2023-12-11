@@ -1,6 +1,8 @@
-package my:comp;
+package component:usb-component-wasi-guest;
 
 
 world root {
 	import component:usb/device@0.1.0;
+	
+	export hello: func() -> u32;
 }

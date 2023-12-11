@@ -1,5 +1,11 @@
 [workspace]
 members = [
-	"usb_component_wasi",
-	"usb_component_wasi_guest"
+	# "usb_component_wasi",
+	"usb_component_wasi_guest",
+	"usb_wasi_host"
 ]
+
+exclude = [
+	"usb_component_wasi"
+]
+resolver = "2"
