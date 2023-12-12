@@ -2,56 +2,30 @@
 use wasmtime::{component::*, Config, Engine, Store};
 use wasmtime_wasi::preview2::{command, WasiCtx, WasiCtxBuilder, WasiView, Table};
 use async_trait::async_trait;
-use std::collections::HashMap;
-
 
 use crate::bindings::component::usb::device::{HostUsbDevice, Properties, UsbDevice};
 use crate::bindings::Usb;
-// use example::service::{
-//     logging::{self, HostLogger},
-//     types::{self, HostRequest, HostResponse},
-// };
-// use exports::example::service::handler;
+
 pub mod bindings {
     wasmtime::component::bindgen!({
-        path: "wit",
         world: "component:usb/usb",
-        async: true
+        async: true,
+        with: {
+            "component:usb/device/usb-device": super::MyDevice,
+        }
     });
 }
 
-pub struct State {
-    devices: HashMap<u32, MyDevice>,
-    
-    current_id: u32,
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self {
-            devices: HashMap::new(),
-            current_id: 0
-        }
-    }
-}
 struct ServerWasiView {
     table: Table,
-    ctx: WasiCtx,
-    state: State
-}
-
-impl State {
-    fn devices_mut(&mut self) -> &mut HashMap<u32, MyDevice> {
-        &mut self.devices
-    }
+    ctx: WasiCtx
 }
 
 impl ServerWasiView {
     fn new() -> Self {
         let table = Table::new();
         let ctx = WasiCtxBuilder::new().inherit_stdio().build();
-        let state = State::default();
-        Self { table, ctx, state }
+        Self { table, ctx }
     }
 }
 
@@ -74,30 +48,12 @@ impl WasiView for ServerWasiView {
 }
 
 #[derive(Debug)]
-struct MyDevice {
-    init: Vec<u8>,
+pub struct MyDevice {
     device: rusb::Device<rusb::GlobalContext>
 }
 
-impl State {
-    pub fn new_id(&mut self) -> u32 {
-        self.current_id += 1;
-        self.current_id
-    }
-}
-
-// /// A result of a function that may return a `Error`.
-// pub type Result<T> = result::Result<T, Error>;
-// 
-// #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-// #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-// pub enum Error {
-//     Descriptor(rusb::Error)
-// }
-
-
 impl MyDevice {
-    fn get_properties(self) -> anyhow::Result<Properties> {
+    fn get_properties(&self) -> anyhow::Result<Properties> {
         let descriptor = self.device.device_descriptor()?;
         
         let props = Properties {
@@ -107,48 +63,23 @@ impl MyDevice {
         Ok(props)
     }
 }
-// impl<T: ServerWasiView> HostUsbDevice for T {
-//     fn drop(&mut self, fields: Resource<HostUsbDevice>) -> wasmtime::Result<()> {
-//         
-//     }
-// }
 
 impl bindings::component::usb::types::Host for ServerWasiView {
     
-}
-
-enum MyError {
-    Unknown
 }
 
 #[async_trait]
 impl HostUsbDevice for ServerWasiView {
     
     fn drop(&mut self, rep: Resource<UsbDevice>) -> wasmtime::Result<()> {
-        println!("Drop Resource");
-        // Resource
         Ok(self
-        .state
-        .devices_mut()
-        .remove(&rep.rep())
-        // .delete(rep.rep())
-        .map(|_| ()).ok_or(wasmtime::Error::msg("Test"))?)
-        // Ok(())
+        .table_mut()
+        .delete(rep)
+        .map(|_| ())?)
     }
     
     async fn properties(&mut self, rep: Resource<UsbDevice>) -> wasmtime::Result<Properties> {
-        println!("Getting properties...");
-        let usbdevice = self.state.devices.get(&rep.rep());
-        // let device = self.table_mut().get_any_mut(rep.rep())?;
-        // let usbdevice: Option<&mut MyDevice> = device.downcast_mut();
-        
-        if let Some(device) = usbdevice {
-            println!("deviceeee: {:?}", device);
-        } else {
-            println!("Could not cast");
-        }
-        
-        Ok(Properties { device_class: 0 })
+        self.table().get(&rep)?.get_properties()
     }
 }
 
@@ -236,13 +167,9 @@ impl bindings::component::usb::device::Host for ServerWasiView {
 
         let mut hosts: Vec<anyhow::Result<Resource<UsbDevice>>> = vec![];
         for device in devices {
-            let request = MyDevice { init: vec![device.address()], device: device };
+            let request = MyDevice { device };
             
-            let id = self.state.new_id();
-            let something = self.state.devices.insert(id, request);
-            
-            
-            hosts.push(Ok(Resource::new_own(id)));
+            hosts.push(Ok(self.table_mut().push(request)?));
         }
         hosts.into_iter().collect()
     }
