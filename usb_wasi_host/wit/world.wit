@@ -1,8 +1,36 @@
 package component:usb@0.1.0;
 
 interface types {
+
+    enum direction { in, out }
+    
+    enum usage-type { data, feedback, feedback-data, reserved }
+    
+    enum sync-type { no-sync, asynchronous, adaptive, synchronous }
+    
+    enum transfer-type { control, isochronous, bulk, interrupt }
+
+    record endpoint-descriptor {
+        address: u8,
+        direction: direction,
+        interval: u8,
+        max-packet-size: u16,
+        number: u8,
+        refresh: u8, // Audio
+        sync-type: sync-type,
+        synch-address: u8, // Audio
+        transfer-type: transfer-type,
+        usage-type: usage-type
+    }
+
+    record interface-descriptor {
+        class-code: u8,
+        endpoint-descriptors: list<endpoint-descriptor>
+    }
+    
     record %interface {
-        number: u8
+        number: u8,
+        descriptors: list<interface-descriptor>
     }
 
     record configuration {

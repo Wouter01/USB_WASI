@@ -1,15 +1,17 @@
-
 use wasmtime::{component::*, Config, Engine, Store};
 use wasmtime_wasi::preview2::{command, WasiCtx, WasiCtxBuilder, WasiView, Table};
 use async_trait::async_trait;
 use clap::Parser;
 use std::path::PathBuf;
 use anyhow::{Result, Error};
-use std::time::Duration;
 
-use crate::bindings::component::usb::device::{HostUsbDevice, UsbDevice};
-use crate::bindings::component::usb::types::{Version, Properties, Configuration, Interface};
+use crate::bindings::component::usb::device::UsbDevice;
 use crate::bindings::Usb;
+pub mod conversion;
+
+pub mod device;
+
+pub use device::usbdevice::MyDevice;
 
 pub mod bindings {
     wasmtime::component::bindgen!({
@@ -17,24 +19,10 @@ pub mod bindings {
         async: true,
         with: {
             "component:usb/device/usb-device": super::MyDevice,
-            "component:usb/types/test": super::MyTest
         }
     });
 }
 
-// Implement the From trait for conversion from A to B
-impl From<rusb::Version> for Version {
-    fn from(a: rusb::Version) -> Self {
-        Version { major: a.0, minor: a.1, subminor: a.2 }
-    }
-}
-
-// Implement the From trait for conversion from B to A
-impl From<Version> for rusb::Version {
-    fn from(b: Version) -> Self {
-        rusb::Version { 0: b.major, 1: b.minor, 2: b.subminor }
-    }
-}
 
 struct ServerWasiView {
     table: Table,
@@ -48,6 +36,8 @@ impl ServerWasiView {
         Self { table, ctx }
     }
 }
+
+
 
 impl WasiView for ServerWasiView {
     fn table(&self) -> &Table {
@@ -67,87 +57,6 @@ impl WasiView for ServerWasiView {
     }
 }
 
-#[derive(Debug)]
-pub struct MyDevice {
-    device: rusb::Device<rusb::GlobalContext>
-}
-
-#[derive(Debug)]
-pub struct MyTest {
-    
-}
-
-impl MyDevice {
-    
-    
-    fn get_properties(&self) -> Result<Properties> {
-        let device = &self.device;
-        let descriptor = device.device_descriptor()?;
-        
-        let props = Properties {
-            device_class: descriptor.class_code(),
-            device_protocol: descriptor.protocol_code(),
-            device_subclass: descriptor.sub_class_code(),
-            device_version: descriptor.device_version().into(),
-            product_id: descriptor.product_id(),
-            usb_version: descriptor.usb_version().into(),
-            vendor_id: descriptor.vendor_id()
-        };
-        
-        Ok(props)
-    }
-    
-    fn get_configurations(&self) -> Result<Vec<Configuration>> {
-        
-        let device = &self.device;
-        
-        let handle = device.open()?;
-        
-        let timeout = Duration::from_secs(1);
-        
-        let languages = handle.read_languages(timeout)?;
-        let language = languages.first().ok_or(Error::msg("No language to read configuration"))?;
-        
-        (0..device.device_descriptor()?.num_configurations())
-        .map(|i| {
-            let config = device.config_descriptor(i)?;
-            let name = handle.read_configuration_string(*language, &config, timeout).ok();
-            
-            let interfaces = config.interfaces().map(|interface| {
-                Interface {
-                    number: interface.number()
-                }
-            })
-            .collect();
-            
-            Ok(Configuration { 
-                name,
-                max_power: config.max_power(),
-                interfaces
-            })
-        })
-        .collect()
-    }
-}
-
-#[async_trait]
-impl HostUsbDevice for ServerWasiView {
-    
-    fn drop(&mut self, rep: Resource<UsbDevice>) -> Result<()> {
-        Ok(self
-        .table_mut()
-        .delete(rep)
-        .map(|_| ())?)
-    }
-    
-    async fn properties(&mut self, device: Resource<UsbDevice>) -> Result<Properties> {
-        self.table().get(&device)?.get_properties()
-    }
-    
-    async fn configurations(&mut self, device: Resource<UsbDevice>) -> Result<Vec<Configuration>> {
-        self.table().get(&device)?.get_configurations()
-    }
-}
 
 impl bindings::component::usb::types::Host for ServerWasiView {
     
