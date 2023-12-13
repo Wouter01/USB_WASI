@@ -2,6 +2,8 @@
 use wasmtime::{component::*, Config, Engine, Store};
 use wasmtime_wasi::preview2::{command, WasiCtx, WasiCtxBuilder, WasiView, Table};
 use async_trait::async_trait;
+use clap::Parser;
+use std::path::PathBuf;
 
 use crate::bindings::component::usb::device::{HostUsbDevice, Properties, UsbDevice};
 use crate::bindings::Usb;
@@ -98,31 +100,45 @@ impl bindings::component::usb::device::Host for ServerWasiView {
     }
 }
 
+
+#[derive(Parser)]
+#[clap(name = "usb", version = env!("CARGO_PKG_VERSION"))]
+struct UsbDemoApp {
+    /// The path to the guest component.
+    #[clap(value_name = "COMPONENT_PATH")]
+    component: PathBuf,
+}
+
+impl UsbDemoApp {
+    async fn run(self) -> anyhow::Result<()> {
+        let mut config = Config::default();
+        config.wasm_component_model(true);
+        config.async_support(true);
+        
+        let engine = Engine::new(&config)?;
+        let mut linker = Linker::new(&engine);
+        
+        let data = ServerWasiView::new();
+        
+        let mut store = Store::new(&engine, data);
+        
+        command::add_to_linker(&mut linker)?;
+        
+        let component = Component::from_file(&engine, self.component)?;
+        
+        Usb::add_to_linker(&mut linker, |view| view)?;
+        
+        let instance = linker.instantiate_async(&mut store, &component).await?;
+        
+        let run = instance.get_typed_func::<(), (u32,)>(&mut store, "hello")?;
+        
+        run.call_async(&mut store, ()).await?;
+        
+        Ok(())
+    }
+}
+
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {
-    
-    let mut config = Config::default();
-    config.wasm_component_model(true);
-    config.async_support(true);
-    
-    let engine = Engine::new(&config)?;
-    let mut linker = Linker::new(&engine);
-    
-    let data = ServerWasiView::new();
-    
-    let mut store = Store::new(&engine, data);
-    
-    command::add_to_linker(&mut linker)?;
-    
-    let component = Component::from_file(&engine, "/Volumes/Macintosh HD/Users/wouter/Developer/masterproef/USB_WASI/target/wasm32-wasi/debug/usb-component-wasi-guest.wasm")?;
-    
-    Usb::add_to_linker(&mut linker, |view| view)?;
-    
-    let instance = linker.instantiate_async(&mut store, &component).await?;
-
-    let run = instance.get_typed_func::<(), (u32,)>(&mut store, "hello")?;
-    
-    run.call_async(&mut store, ()).await?;
-    
-    Ok(())
+    UsbDemoApp::parse().run().await
 }
