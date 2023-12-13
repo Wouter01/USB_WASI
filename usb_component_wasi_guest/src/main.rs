@@ -18,19 +18,15 @@ fn main() {
 struct Component;
 
 impl Guest for Component {
-    fn hello() -> u32 {
+    fn hello() {
         // let device = UsbDevice::new(&test);
         // let output = device.test();
         let all_devices = get_devices();
-        let props: Vec<Properties> = all_devices.iter().map(|d| d.properties()).collect();
+        let devices = all_devices
+        .iter()
+        .map(|d| (d.properties(), d.configurations()))
+        .collect::<Vec<_>>();
         
-        let configs: Vec<Vec<Configuration>> = all_devices.iter().map(|d| d.configurations()).collect();
-        
-        let devices = std::iter::zip(props, configs).collect::<Vec<_>>();
         println!("Devices: {:#?}", devices);
-        
-        // println!("{:?}", output);
-        println!("Hello, worldddd!");
-        5
     }
 }

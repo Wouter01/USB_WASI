@@ -198,8 +198,8 @@ impl UsbDemoApp {
         
         let instance = linker.instantiate_async(&mut store, &component).await?;
         
-        let run = instance.get_typed_func::<(), (u32,)>(&mut store, "hello")?;
-        
+        let run = instance.get_typed_func::<(), ()>(&mut store, "hello")?;
+
         run.call_async(&mut store, ()).await?;
         
         Ok(())
