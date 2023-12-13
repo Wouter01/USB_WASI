@@ -1,6 +1,15 @@
 package component:usb@0.1.0;
 
 interface types {
+    record %interface {
+        number: u8
+    }
+
+    record configuration {
+        name: option<string>,
+        max-power: u16,
+        interfaces: list<%interface>
+    }
 
     record version {
         major: u8,
@@ -20,12 +29,13 @@ interface types {
 }
 
 interface device {
-    use types.{properties};
+    use types.{properties, configuration};
 
     resource usb-device {
         //constructor(init: list<u8>);
         
         properties: func() -> properties;
+        configurations: func() -> list<configuration>;
         
     }
     
@@ -36,6 +46,6 @@ interface device {
 world usb {
     import device;
     import types;
-    //export device;
-    //export types;
+    export device;
+    export types;
 }

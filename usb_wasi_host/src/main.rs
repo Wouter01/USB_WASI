@@ -4,9 +4,11 @@ use wasmtime_wasi::preview2::{command, WasiCtx, WasiCtxBuilder, WasiView, Table}
 use async_trait::async_trait;
 use clap::Parser;
 use std::path::PathBuf;
+use anyhow::{Result, Error};
+use std::time::Duration;
 
-use crate::bindings::component::usb::device::{HostUsbDevice, Properties, UsbDevice};
-use crate::bindings::component::usb::types::{Version};
+use crate::bindings::component::usb::device::{HostUsbDevice, UsbDevice};
+use crate::bindings::component::usb::types::{Version, Properties, Configuration, Interface};
 use crate::bindings::Usb;
 
 pub mod bindings {
@@ -15,6 +17,7 @@ pub mod bindings {
         async: true,
         with: {
             "component:usb/device/usb-device": super::MyDevice,
+            "component:usb/types/test": super::MyTest
         }
     });
 }
@@ -69,9 +72,17 @@ pub struct MyDevice {
     device: rusb::Device<rusb::GlobalContext>
 }
 
+#[derive(Debug)]
+pub struct MyTest {
+    
+}
+
 impl MyDevice {
-    fn get_properties(&self) -> anyhow::Result<Properties> {
-        let descriptor = self.device.device_descriptor()?;
+    
+    
+    fn get_properties(&self) -> Result<Properties> {
+        let device = &self.device;
+        let descriptor = device.device_descriptor()?;
         
         let props = Properties {
             device_class: descriptor.class_code(),
@@ -85,6 +96,57 @@ impl MyDevice {
         
         Ok(props)
     }
+    
+    fn get_configurations(&self) -> Result<Vec<Configuration>> {
+        
+        let device = &self.device;
+        
+        let handle = device.open()?;
+        
+        let timeout = Duration::from_secs(1);
+        
+        let languages = handle.read_languages(timeout)?;
+        let language = languages.first().ok_or(Error::msg("No language to read configuration"))?;
+        
+        (0..device.device_descriptor()?.num_configurations())
+        .map(|i| {
+            let config = device.config_descriptor(i)?;
+            let name = handle.read_configuration_string(*language, &config, timeout).ok();
+            
+            let interfaces = config.interfaces().map(|interface| {
+                Interface {
+                    number: interface.number()
+                }
+            })
+            .collect();
+            
+            Ok(Configuration { 
+                name,
+                max_power: config.max_power(),
+                interfaces
+            })
+        })
+        .collect()
+    }
+}
+
+#[async_trait]
+impl HostUsbDevice for ServerWasiView {
+    
+    fn drop(&mut self, rep: Resource<UsbDevice>) -> Result<()> {
+        Ok(self
+        .table_mut()
+        .delete(rep)
+        .map(|_| ())?)
+    }
+    
+    async fn properties(&mut self, device: Resource<UsbDevice>) -> Result<Properties> {
+        self.table().get(&device)?.get_properties()
+    }
+    
+    async fn configurations(&mut self, device: Resource<UsbDevice>) -> Result<Vec<Configuration>> {
+        self.table().get(&device)?.get_configurations()
+    }
 }
 
 impl bindings::component::usb::types::Host for ServerWasiView {
@@ -92,30 +154,15 @@ impl bindings::component::usb::types::Host for ServerWasiView {
 }
 
 #[async_trait]
-impl HostUsbDevice for ServerWasiView {
-    
-    fn drop(&mut self, rep: Resource<UsbDevice>) -> wasmtime::Result<()> {
-        Ok(self
-        .table_mut()
-        .delete(rep)
-        .map(|_| ())?)
-    }
-    
-    async fn properties(&mut self, rep: Resource<UsbDevice>) -> wasmtime::Result<Properties> {
-        self.table().get(&rep)?.get_properties()
-    }
-}
-
-#[async_trait]
 impl bindings::component::usb::device::Host for ServerWasiView {
-    async fn get_devices(&mut self,) -> wasmtime::Result<Vec<wasmtime::component::Resource<UsbDevice>>> {
+    async fn get_devices(&mut self,) -> Result<Vec<Resource<UsbDevice>>> {
         rusb::devices()?
         .iter()
         .map(|device| {
            self
            .table_mut()
            .push(MyDevice { device })
-           .map_err(wasmtime::Error::from)
+           .map_err(Error::from)
         })
         .collect()
     }
@@ -131,7 +178,7 @@ struct UsbDemoApp {
 }
 
 impl UsbDemoApp {
-    async fn run(self) -> anyhow::Result<()> {
+    async fn run(self) -> Result<()> {
         let mut config = Config::default();
         config.wasm_component_model(true);
         config.async_support(true);
@@ -160,6 +207,6 @@ impl UsbDemoApp {
 }
 
 #[async_std::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     UsbDemoApp::parse().run().await
 }
