@@ -1,8 +1,21 @@
 package component:usb@0.1.0;
 
 interface types {
+
+    record version {
+        major: u8,
+        minor: u8,
+        subminor: u8
+    }
+    
     record properties {
-        device-class: u8
+        device-class: u8,
+        device-protocol: u8,
+        device-subclass: u8,
+        device-version: version,
+        product-id: u16,
+        usb-version: version,
+        vendor-id: u16
     }
 }
 
@@ -22,6 +35,7 @@ interface device {
 /// An example world for the component to target.
 world usb {
     import device;
-    export device;
-    export types;
+    import types;
+    //export device;
+    //export types;
 }

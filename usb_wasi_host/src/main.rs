@@ -6,6 +6,7 @@ use clap::Parser;
 use std::path::PathBuf;
 
 use crate::bindings::component::usb::device::{HostUsbDevice, Properties, UsbDevice};
+use crate::bindings::component::usb::types::{Version};
 use crate::bindings::Usb;
 
 pub mod bindings {
@@ -16,6 +17,20 @@ pub mod bindings {
             "component:usb/device/usb-device": super::MyDevice,
         }
     });
+}
+
+// Implement the From trait for conversion from A to B
+impl From<rusb::Version> for Version {
+    fn from(a: rusb::Version) -> Self {
+        Version { major: a.0, minor: a.1, subminor: a.2 }
+    }
+}
+
+// Implement the From trait for conversion from B to A
+impl From<Version> for rusb::Version {
+    fn from(b: Version) -> Self {
+        rusb::Version { 0: b.major, 1: b.minor, 2: b.subminor }
+    }
 }
 
 struct ServerWasiView {
@@ -59,7 +74,13 @@ impl MyDevice {
         let descriptor = self.device.device_descriptor()?;
         
         let props = Properties {
-            device_class: descriptor.class_code()
+            device_class: descriptor.class_code(),
+            device_protocol: descriptor.protocol_code(),
+            device_subclass: descriptor.sub_class_code(),
+            device_version: descriptor.device_version().into(),
+            product_id: descriptor.product_id(),
+            usb_version: descriptor.usb_version().into(),
+            vendor_id: descriptor.vendor_id()
         };
         
         Ok(props)

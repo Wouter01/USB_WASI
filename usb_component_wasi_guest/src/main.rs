@@ -24,8 +24,8 @@ impl Guest for Component {
         // let device = UsbDevice::new(&test);
         // let output = device.test();
         let all_devices = get_devices();
-        let props = all_devices[0].properties();
-        println!("Devices: {:?}", all_devices);
+        let props: Vec<Properties> = all_devices.iter().map(|d| d.properties()).collect();
+        println!("Devices: {:#?}", props);
         // println!("{:?}", output);
         println!("Hello, worldddd!");
         5
