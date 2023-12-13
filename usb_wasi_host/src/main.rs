@@ -1,9 +1,9 @@
-use wasmtime::{component::*, Config, Engine, Store};
-use wasmtime_wasi::preview2::{command, WasiCtx, WasiCtxBuilder, WasiView, Table};
+use anyhow::{Error, Result};
 use async_trait::async_trait;
 use clap::Parser;
 use std::path::PathBuf;
-use anyhow::{Result, Error};
+use wasmtime::{component::*, Config, Engine, Store};
+use wasmtime_wasi::preview2::{command, Table, WasiCtx, WasiCtxBuilder, WasiView};
 
 use crate::bindings::component::usb::device::UsbDevice;
 use crate::bindings::Usb;
@@ -23,10 +23,9 @@ pub mod bindings {
     });
 }
 
-
 struct ServerWasiView {
     table: Table,
-    ctx: WasiCtx
+    ctx: WasiCtx,
 }
 
 impl ServerWasiView {
@@ -36,8 +35,6 @@ impl ServerWasiView {
         Self { table, ctx }
     }
 }
-
-
 
 impl WasiView for ServerWasiView {
     fn table(&self) -> &Table {
@@ -57,26 +54,21 @@ impl WasiView for ServerWasiView {
     }
 }
 
-
-impl bindings::component::usb::types::Host for ServerWasiView {
-    
-}
+impl bindings::component::usb::types::Host for ServerWasiView {}
 
 #[async_trait]
 impl bindings::component::usb::device::Host for ServerWasiView {
-    async fn get_devices(&mut self,) -> Result<Vec<Resource<UsbDevice>>> {
+    async fn get_devices(&mut self) -> Result<Vec<Resource<UsbDevice>>> {
         rusb::devices()?
-        .iter()
-        .map(|device| {
-           self
-           .table_mut()
-           .push(MyDevice { device })
-           .map_err(Error::from)
-        })
-        .collect()
+            .iter()
+            .map(|device| {
+                self.table_mut()
+                    .push(MyDevice { device })
+                    .map_err(Error::from)
+            })
+            .collect()
     }
 }
-
 
 #[derive(Parser)]
 #[clap(name = "usb", version = env!("CARGO_PKG_VERSION"))]
@@ -91,26 +83,26 @@ impl UsbDemoApp {
         let mut config = Config::default();
         config.wasm_component_model(true);
         config.async_support(true);
-        
+
         let engine = Engine::new(&config)?;
         let mut linker = Linker::new(&engine);
-        
+
         let data = ServerWasiView::new();
-        
+
         let mut store = Store::new(&engine, data);
-        
+
         command::add_to_linker(&mut linker)?;
-        
+
         let component = Component::from_file(&engine, self.component)?;
-        
+
         Usb::add_to_linker(&mut linker, |view| view)?;
-        
+
         let instance = linker.instantiate_async(&mut store, &component).await?;
-        
+
         let run = instance.get_typed_func::<(), ()>(&mut store, "hello")?;
 
         run.call_async(&mut store, ()).await?;
-        
+
         Ok(())
     }
 }
