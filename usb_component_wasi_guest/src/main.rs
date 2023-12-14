@@ -1,7 +1,6 @@
 cargo_component_bindings::generate!();
 
-use crate::bindings::component::usb::device::{get_devices};
-use crate::bindings::component::usb::types::{Configuration, Properties};
+use crate::bindings::component::usb::device::get_devices;
 use crate::bindings::Guest;
 // use crate::bindings::usb_device::Device as Device;
 

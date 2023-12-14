@@ -1,18 +1,16 @@
+use crate::bindings::component::usb as world;
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use std::time::Duration;
+use wasmtime::component::Resource;
 use wasmtime_wasi::preview2::WasiView;
 
-use crate::bindings::component::usb::types::{
-    Configuration, Interface, InterfaceDescriptor, Properties,
-};
-
-use crate::bindings::component::usb::device::{HostUsbDevice, UsbDevice};
-use wasmtime::component::Resource;
+use world::device::{HostUsbDevice, UsbDevice};
+use world::types::{Configuration, Interface, InterfaceDescriptor, Properties};
 
 #[derive(Debug)]
 pub struct MyDevice {
-    pub device: rusb::Device<rusb::GlobalContext>,
+    device: rusb::Device<rusb::GlobalContext>,
 }
 
 impl MyDevice {
@@ -45,14 +43,12 @@ impl MyDevice {
                     .map(|interface| {
                         let descriptors = interface
                             .descriptors()
-                            .map(|d| {
-                                let endpoint_descriptors =
-                                    d.endpoint_descriptors().map(|ed| ed.into()).collect();
-
-                                InterfaceDescriptor {
-                                    class_code: d.class_code(),
-                                    endpoint_descriptors,
-                                }
+                            .map(|d| InterfaceDescriptor {
+                                class_code: d.class_code(),
+                                endpoint_descriptors: d
+                                    .endpoint_descriptors()
+                                    .map(|ed| ed.into())
+                                    .collect(),
                             })
                             .collect();
 
@@ -88,5 +84,22 @@ where
 
     async fn configurations(&mut self, device: Resource<UsbDevice>) -> Result<Vec<Configuration>> {
         self.table().get(&device)?.get_configurations()
+    }
+}
+
+#[async_trait]
+impl<T> world::device::Host for T
+where
+    T: WasiView,
+{
+    async fn get_devices(&mut self) -> Result<Vec<Resource<UsbDevice>>> {
+        rusb::devices()?
+            .iter()
+            .map(|device| {
+                self.table_mut()
+                    .push(MyDevice { device })
+                    .map_err(Error::from)
+            })
+            .collect()
     }
 }

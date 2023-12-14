@@ -1,16 +1,13 @@
-use anyhow::{Error, Result};
-use async_trait::async_trait;
+use anyhow::Result;
 use clap::Parser;
 use std::path::PathBuf;
 use wasmtime::{component::*, Config, Engine, Store};
 use wasmtime_wasi::preview2::{command, Table, WasiCtx, WasiCtxBuilder, WasiView};
 
-use crate::bindings::component::usb::device::UsbDevice;
 use crate::bindings::Usb;
+
 pub mod conversion;
-
 pub mod device;
-
 pub use device::usbdevice::MyDevice;
 
 pub mod bindings {
@@ -55,20 +52,6 @@ impl WasiView for ServerWasiView {
 }
 
 impl bindings::component::usb::types::Host for ServerWasiView {}
-
-#[async_trait]
-impl bindings::component::usb::device::Host for ServerWasiView {
-    async fn get_devices(&mut self) -> Result<Vec<Resource<UsbDevice>>> {
-        rusb::devices()?
-            .iter()
-            .map(|device| {
-                self.table_mut()
-                    .push(MyDevice { device })
-                    .map_err(Error::from)
-            })
-            .collect()
-    }
-}
 
 #[derive(Parser)]
 #[clap(name = "usb", version = env!("CARGO_PKG_VERSION"))]
