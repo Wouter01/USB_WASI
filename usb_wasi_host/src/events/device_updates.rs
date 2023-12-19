@@ -15,14 +15,8 @@ impl DeviceUpdateHandler {
 		tokio::task::spawn_blocking(move || {
 			let _reg = Some(reg.unwrap());
 			loop {
-				match context.handle_events(None) {
-					Ok(event) => {
-						println!("Got event {:?}", event);
-					}
-					Err(e) => {
-						println!("Error {:?}", e);
-						break;
-					}
+				if let Err(_) = context.handle_events(None) {
+					break;
 				}
 			}
 		});

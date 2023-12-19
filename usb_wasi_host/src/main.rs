@@ -113,35 +113,16 @@ impl UsbDemoApp {
     }
 }
 
-impl<T: rusb::UsbContext> rusb::Hotplug<T> for UsbDemoApp {
-    fn device_arrived(&mut self, _: rusb::Device<T>) {
-        println!("Device Added");
-        
-        let data = ServerWasiView::new();
-        let mut store = Store::new(&self.runner.engine, data);
-        let component = self.runner.component.clone();
-        let linker = self.runner.linker.clone();
-        
-        println!("About to start task");
-        // tokio::sync::oneshot::channel()
-        
-        tokio::spawn(async move {
-            println!("Started task");
-            // println!("Got instance");
-            let instance = linker.instantiate_async(&mut store, &component).await.unwrap();
-            
-            
-        
-            let run = instance.get_typed_func::<(), ()>(&mut store, "hello").unwrap();
-            
-            let _ = run.call_async(&mut store, ()).await;
-            println!("Ended");
-        });
-    }
-
-    fn device_left(&mut self, _: rusb::Device<T>) {
-        println!("Device removed");
-    }
+async fn start_guest(runner: &mut Runner) -> Result<()> {
+    let data = ServerWasiView::new();
+    let mut store = Store::new(&runner.engine, data);
+    let component = runner.component.clone();
+    let linker = runner.linker.clone();
+    let instance = linker.instantiate_async(&mut store, &component).await?;
+    let run = instance.get_typed_func::<(), ()>(&mut store, "hello").unwrap();
+    
+    let _ = run.call_async(&mut store, ()).await;
+    Ok(())
 }
 
 #[tokio::main]
@@ -154,7 +135,7 @@ async fn main() -> Result<()> {
     let mut stream = events::device_connection_updates();
     while let Some(message) = stream.recv().await {
         println!("Received: {:?}", message);
-        runner.run.call_async(&mut runner.store, ()).await?;
+        start_guest(runner).await;
     }
     
     Ok(())
