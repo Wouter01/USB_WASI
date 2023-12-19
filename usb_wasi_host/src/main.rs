@@ -4,16 +4,12 @@ use std::path::PathBuf;
 use wasmtime::{component::*, Config, Engine, Store};
 use wasmtime_wasi::preview2::{command, Table, WasiCtx, WasiCtxBuilder, WasiView};
 
-use tokio::sync::Mutex;
-use std::sync::Arc;
-
-use rusb::UsbContext;
-
 use crate::bindings::UsbHost;
 
 pub mod conversion;
 pub mod device;
 pub use device::usbdevice::MyDevice;
+mod events;
 
 pub type GlobalUsbDevice = MyDevice<rusb::GlobalContext>;
 
@@ -74,7 +70,10 @@ struct UsbDemoApp {
 
 #[allow(dead_code)]
 struct Runner {
+    engine: Engine,
+    linker: Linker<ServerWasiView>,
     instance: Instance,
+    component: Component,
     store: Store<ServerWasiView>,
     run: TypedFunc<(), ()>
 }
@@ -91,20 +90,21 @@ impl UsbDemoApp {
 
         let data = ServerWasiView::new();
 
-        let mut store = Store::new(&engine, data);
-
         command::add_to_linker(&mut linker)?;
-
         let component = Component::from_file(&engine, component)?;
 
         UsbHost::add_to_linker(&mut linker, |view| view)?;
+        
+        let mut store = Store::new(&engine, data);
 
         let instance = linker.instantiate_async(&mut store, &component).await?;
-        
         let run = instance.get_typed_func::<(), ()>(&mut store, "hello")?;
         
         let runner = Runner {
+            engine,
+            linker,
             instance,
+            component,
             store,
             run
         };
@@ -113,29 +113,30 @@ impl UsbDemoApp {
     }
 }
 
-fn start_listener(_: Arc<Mutex<u32>>, app: UsbDemoApp) {
-    let context = rusb::Context::new().unwrap();
-    let reg: Result<rusb::Registration<rusb::Context>, rusb::Error> = rusb::HotplugBuilder::new()
-        .enumerate(true)
-        .register(&context, Box::new(app));
-
-    tokio::task::spawn_blocking(move || {
-        let _reg = Some(reg.unwrap());
-        loop {
-            match context.handle_events(None) {
-                Ok(_) => {}
-                Err(e) => {
-                    println!("Error {:?}", e);
-                    break;
-                }
-            }
-        }
-    });
-}
-
 impl<T: rusb::UsbContext> rusb::Hotplug<T> for UsbDemoApp {
-    fn device_arrived(& mut self, _: rusb::Device<T>) {
+    fn device_arrived(&mut self, _: rusb::Device<T>) {
         println!("Device Added");
+        
+        let data = ServerWasiView::new();
+        let mut store = Store::new(&self.runner.engine, data);
+        let component = self.runner.component.clone();
+        let linker = self.runner.linker.clone();
+        
+        println!("About to start task");
+        // tokio::sync::oneshot::channel()
+        
+        tokio::spawn(async move {
+            println!("Started task");
+            // println!("Got instance");
+            let instance = linker.instantiate_async(&mut store, &component).await.unwrap();
+            
+            
+        
+            let run = instance.get_typed_func::<(), ()>(&mut store, "hello").unwrap();
+            
+            let _ = run.call_async(&mut store, ()).await;
+            println!("Ended");
+        });
     }
 
     fn device_left(&mut self, _: rusb::Device<T>) {
@@ -150,9 +151,11 @@ async fn main() -> Result<()> {
     let mut app = UsbDemoApp::create(parsed.component).await?;
     let runner = &mut app.runner;
     
-    runner.run.call_async(&mut runner.store, ()).await?;
+    let mut stream = events::device_connection_updates();
+    while let Some(message) = stream.recv().await {
+        println!("Received: {:?}", message);
+        runner.run.call_async(&mut runner.store, ()).await?;
+    }
     
-    let data = Arc::new(Mutex::new(5));
-    start_listener(data.clone(), app);
     Ok(())
 }
