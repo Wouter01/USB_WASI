@@ -17,3 +17,5 @@ path = "wit"
 
 [dependencies]
 cargo-component-bindings = "0.5.0"
+async-trait = "0.1.74"
+tokio = { version = "1.35.0", features = [ "sync", "macros" ,"io-util","rt","time" ] }

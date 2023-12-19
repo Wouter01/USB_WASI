@@ -17,9 +17,8 @@ fn main() {
 struct Component;
 
 impl Guest for Component {
-    fn hello() {
-        // let device = UsbDevice::new(&test);
-        // let output = device.test();
+    #[tokio::main(flavor = "current_thread")]
+    async fn hello() {
         let all_devices = get_devices();
         let devices = all_devices
         .iter()
