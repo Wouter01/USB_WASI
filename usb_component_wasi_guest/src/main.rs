@@ -2,19 +2,13 @@ cargo_component_bindings::generate!();
 
 use crate::bindings::component::usb::device::get_devices;
 use crate::bindings::Guest;
-// use crate::bindings::usb_device::Device as Device;
+use crate::bindings::exports::component::usb::events::Guest as EventsGuest;
+use crate::bindings::component::usb::device::UsbDevice;
 
-fn main() {
-    // let device = UsbDevice::new(&test);
-    // let output = device.test();
-    let all_devices = get_devices();
-    
-    println!("Devices: {:?}", all_devices);
-    // println!("{:?}", output);
-    println!("Hello, worlddd!");
-}
+fn main() {}
 
 struct Component;
+
 
 impl Guest for Component {
     #[tokio::main(flavor = "current_thread")]
@@ -26,5 +20,15 @@ impl Guest for Component {
         .collect::<Vec<_>>();
         
         println!("Devices: {:#?}", devices);
+    }
+}
+
+impl EventsGuest for Component {
+    fn device_added(_: UsbDevice) {
+        println!("Added Device.");
+    }
+    
+    fn device_removed(_: UsbDevice) {
+        println!("Added Device.");
     }
 }

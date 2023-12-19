@@ -3,6 +3,7 @@ package component:usb-component-wasi-guest;
 
 world root {
 	import component:usb/device@0.1.0;
+	export component:usb/events@0.1.0;
 	
 	export hello: func();
 }

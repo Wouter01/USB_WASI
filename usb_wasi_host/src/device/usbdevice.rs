@@ -5,15 +5,15 @@ use std::time::Duration;
 use wasmtime::component::Resource;
 use wasmtime_wasi::preview2::WasiView;
 
-use world::device::{HostUsbDevice, UsbDevice};
+use world::device::HostUsbDevice;
 use world::types::{Configuration, Interface, InterfaceDescriptor, Properties};
 
 #[derive(Debug)]
-pub struct MyDevice {
-    device: rusb::Device<rusb::GlobalContext>,
+pub struct MyDevice<T: rusb::UsbContext> {
+    pub device: rusb::Device<T>,
 }
 
-impl MyDevice {
+impl<T> MyDevice<T> where T: rusb::UsbContext {
     fn get_properties(&self) -> Result<Properties> {
         let device = &self.device;
         Ok(device.device_descriptor()?.into())
@@ -72,17 +72,17 @@ impl MyDevice {
 #[async_trait]
 impl<T> HostUsbDevice for T
 where
-    T: WasiView,
+    T: WasiView
 {
-    fn drop(&mut self, rep: Resource<UsbDevice>) -> Result<()> {
+    fn drop(&mut self, rep: Resource<MyDevice<rusb::GlobalContext>>) -> Result<()> {
         Ok(self.table_mut().delete(rep).map(|_| ())?)
     }
 
-    async fn properties(&mut self, device: Resource<UsbDevice>) -> Result<Properties> {
+    async fn properties(&mut self, device: Resource<MyDevice<rusb::GlobalContext>>) -> Result<Properties> {
         self.table().get(&device)?.get_properties()
     }
 
-    async fn configurations(&mut self, device: Resource<UsbDevice>) -> Result<Vec<Configuration>> {
+    async fn configurations(&mut self, device: Resource<MyDevice<rusb::GlobalContext>>) -> Result<Vec<Configuration>> {
         self.table().get(&device)?.get_configurations()
     }
 }
@@ -90,9 +90,9 @@ where
 #[async_trait]
 impl<T> world::device::Host for T
 where
-    T: WasiView,
+    T: WasiView
 {
-    async fn get_devices(&mut self) -> Result<Vec<Resource<UsbDevice>>> {
+    async fn get_devices(&mut self) -> Result<Vec<Resource<MyDevice<rusb::GlobalContext>>>> {
         rusb::devices()?
             .iter()
             .map(|device| {
