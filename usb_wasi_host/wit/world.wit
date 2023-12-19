@@ -70,10 +70,23 @@ interface device {
     get-devices: func() -> list<usb-device>;
 }
 
-/// An example world for the component to target.
-world usb {
+interface events {
+    use device.{usb-device};
+    
+    device-added: func(device: usb-device);
+    device-removed: func(device: usb-device);
+}
+
+world usb-host {
     import device;
     import types;
     export device;
     export types;
+    export events;
+}
+
+world usb {
+    import device;
+    import types;
+    export events;
 }
