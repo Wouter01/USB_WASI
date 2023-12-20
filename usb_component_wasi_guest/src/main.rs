@@ -2,33 +2,34 @@ cargo_component_bindings::generate!();
 
 use crate::bindings::component::usb::device::get_devices;
 use crate::bindings::Guest;
-use crate::bindings::exports::component::usb::events::Guest as EventsGuest;
-use crate::bindings::component::usb::device::UsbDevice;
 
-fn main() {}
+use crate::bindings::component::usb::device::UsbDevice;
 
 struct Component;
 
+fn main() {}
 
 impl Guest for Component {
     #[tokio::main(flavor = "current_thread")]
-    async fn hello() {
-        let all_devices = get_devices();
-        let devices = all_devices
-        .iter()
-        .map(|d| (d.properties(), d.configurations()))
-        .collect::<Vec<_>>();
-        
-        println!("Devices: {:#?}", devices);
-    }
-}
+    async fn run() {
+        let all_devices: Vec<UsbDevice> = get_devices();
 
-impl EventsGuest for Component {
-    fn device_added(_: UsbDevice) {
-        println!("Added Device.");
-    }
-    
-    fn device_removed(_: UsbDevice) {
-        println!("Added Device.");
+        let mapped = all_devices
+            .iter()
+            .map(|d| {
+                (
+                    d.properties().device_name, 
+                    d.configurations()
+                    .iter()
+                    .map(|c| c.name.clone().unwrap_or("?".to_string()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+                )
+            })
+            .collect::<Vec<_>>();
+
+        println!("Device names: {:#?}", mapped);
+        
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }
