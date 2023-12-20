@@ -2,6 +2,10 @@ package component:usb@0.1.0;
 
 interface types {
 
+    enum usb-error {
+        device-disconnected
+    }
+
     enum direction { in, out }
     
     enum usage-type { data, feedback, feedback-data, reserved }
@@ -46,7 +50,6 @@ interface types {
     }
     
     record properties {
-        device-name: string,
         device-class: u8,
         device-protocol: u8,
         device-subclass: u8,
@@ -58,11 +61,11 @@ interface types {
 }
 
 interface device {
-    use types.{properties, configuration};
+    use types.{properties, configuration, usb-error};
 
     resource usb-device {
         //constructor(init: list<u8>);
-        
+        get-name: func() -> result<string, usb-error>;
         properties: func() -> properties;
         configurations: func() -> list<configuration>;
         
@@ -74,8 +77,14 @@ interface device {
 interface events {
     use device.{usb-device};
     
-    device-added: func(device: usb-device);
-    device-removed: func(device: usb-device);
+    variant device-connection-event {
+        pending,
+        closed,
+        connected(usb-device),
+        disconnected(usb-device)
+    }
+    
+    update: func() -> device-connection-event;
 }
 
 world usb-host {
@@ -83,6 +92,7 @@ world usb-host {
     import types;
     export device;
     export types;
+    import events;
     export events;
 }
 
