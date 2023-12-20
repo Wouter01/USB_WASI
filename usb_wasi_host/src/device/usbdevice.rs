@@ -127,10 +127,9 @@ where
     }
     
     async fn get_name(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<String, UsbError>> {
-        // Ok(self.table().get(&device)?.get_name().unwrap_or("Unknown Name".to_string()))
         let result = match self.table().get(&device)?.get_name() {
             Ok(a) => Ok(a),
-            Err(e) => Err(UsbError::DeviceDisconnected) 
+            Err(_) => Err(UsbError::DeviceDisconnected) 
         };
         Ok(result)
     }

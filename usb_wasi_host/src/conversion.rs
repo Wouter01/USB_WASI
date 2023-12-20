@@ -1,5 +1,5 @@
 use crate::bindings::component::usb::types::{
-    Direction, EndpointDescriptor, Properties, SyncType, TransferType, UsageType, Version,
+    Direction, EndpointDescriptor, SyncType, TransferType, UsageType, Version,
 };
 
 impl From<rusb::Version> for Version {

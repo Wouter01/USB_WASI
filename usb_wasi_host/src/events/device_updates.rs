@@ -1,3 +1,4 @@
+use anyhow::Result;
 use tokio::sync::mpsc;
 use rusb::{UsbContext, Hotplug};
 use crate::device::usbdevice::MyDevice;
@@ -6,22 +7,39 @@ struct DeviceUpdateHandler {
 	sender: mpsc::Sender<DeviceConnectionEvent>
 }
 
+impl DeviceUpdateHandler {
+	fn new(buffer_size: usize) -> Result<(mpsc::Receiver<DeviceConnectionEvent>, rusb::Registration<rusb::Context>, tokio::task::JoinHandle<()>)> {
+		let (sender, receiver) = mpsc::channel::<DeviceConnectionEvent>(buffer_size);
+		
+		let handler = DeviceUpdateHandler {
+			sender
+		};
+		
+		let (registration, task) = handler.start_listener()?;
+		Ok((receiver, registration, task))
+	}
+}
 
 impl DeviceUpdateHandler where {
-	fn start_listener(self) {
+	fn start_listener(self) -> Result<(rusb::Registration<rusb::Context>, tokio::task::JoinHandle<()>)> {
 		let context = rusb::Context::new().unwrap();
 		let reg: Result<rusb::Registration<rusb::Context>, rusb::Error> = rusb::HotplugBuilder::new()
 			.enumerate(true)
 			.register(&context, Box::new(self));
 	
-		tokio::task::spawn_blocking(move || {
-			let _reg = Some(reg.unwrap());
+		let task = tokio::task::spawn_blocking(move || {
 			loop {
-				if let Err(_) = context.handle_events(None) {
+				if let Err(e) = context.handle_events(None) {
+					println!("Got Error! {:?}", e);
 					break;
 				}
 			}
 		});
+		
+		match reg {
+			Err(e) => Err(anyhow::Error::new(e)),
+			Ok(a) => Ok((a, task))
+		}
 	}
 }
 
@@ -54,11 +72,13 @@ impl Hotplug<rusb::Context> for DeviceUpdateHandler {
 	}
 }
 
-pub fn device_connection_updates() -> mpsc::Receiver<DeviceConnectionEvent> {
-	let (sender, receiver) = mpsc::channel::<DeviceConnectionEvent>(10);
+pub fn device_connection_updates() -> Result<(mpsc::Receiver<DeviceConnectionEvent>, rusb::Registration<rusb::Context>, tokio::task::JoinHandle<()>)> {
+	// let (sender, receiver) = mpsc::channel::<DeviceConnectionEvent>(10);
 	
-	let handler = DeviceUpdateHandler { sender };
-	handler.start_listener();
+	let receiver = DeviceUpdateHandler::new(10)?;
 	
-	receiver
+	// let handler = DeviceUpdateHandler { sender };
+	// handler.start_listener();
+	
+	Ok(receiver)
 }

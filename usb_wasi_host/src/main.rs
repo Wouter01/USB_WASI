@@ -1,10 +1,12 @@
-use anyhow::{Error, Result};
+use anyhow::Result;
 use clap::Parser;
 use tokio::sync::mpsc::error::TryRecvError;
 use std::path::PathBuf;
 use wasmtime::{component::*, Config, Engine, Store};
 use wasmtime_wasi::preview2::{command, Table, WasiCtx, WasiCtxBuilder, WasiView};
 use async_trait::async_trait;
+
+use bindings::component::usb::events::{Host as EventsHost, DeviceConnectionEvent as WasmDeviceConnectionEvent};
 
 use crate::bindings::UsbHost;
 
@@ -25,18 +27,21 @@ pub mod bindings {
     });
 }
 
+#[allow(dead_code)]
 struct ServerWasiView {
     table: Table,
     ctx: WasiCtx,
-    updates: tokio::sync::mpsc::Receiver<events::DeviceConnectionEvent>
+    updates: tokio::sync::mpsc::Receiver<events::DeviceConnectionEvent>,
+    registration: rusb::Registration<rusb::Context>,
+    task: tokio::task::JoinHandle<()>
 }
 
 impl ServerWasiView {
-    fn new() -> Self {
+    fn new() -> Result<Self> {
         let table = Table::new();
         let ctx = WasiCtxBuilder::new().inherit_stdio().build();
-        let stream = events::device_connection_updates();
-        Self { table, ctx, updates: stream }
+        let (receiver, registration, task) = events::device_connection_updates()?;
+        Ok(Self { table, ctx, updates: receiver, registration, task })
     }
 }
 
@@ -59,8 +64,6 @@ impl WasiView for ServerWasiView {
 }
 
 impl bindings::component::usb::types::Host for ServerWasiView {}
-
-use bindings::component::usb::events::{Host as EventsHost, DeviceConnectionEvent as WasmDeviceConnectionEvent};
 
 #[async_trait]
 impl EventsHost for ServerWasiView {
@@ -129,7 +132,7 @@ impl UsbDemoApp {
 }
 
 async fn start_guest(runner: &mut Runner) -> Result<()> {
-    let data = ServerWasiView::new();
+    let data = ServerWasiView::new()?;
     let mut store = Store::new(&runner.engine, data);
     
     let instance = &runner.linker.instantiate_async(&mut store, &runner.component).await?;
@@ -151,6 +154,8 @@ async fn main() -> Result<()> {
     //     
     // }
     let _ = start_guest(runner).await;
+    
+    println!("Guest Ended");
     
     Ok(())
 }

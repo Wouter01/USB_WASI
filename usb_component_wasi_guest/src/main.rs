@@ -48,7 +48,7 @@ impl Guest for Component {
             }
         });
         
-        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
         println!("Stopped sleeping...");
     }
 }
