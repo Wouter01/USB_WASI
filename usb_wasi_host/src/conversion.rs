@@ -70,17 +70,3 @@ impl From<rusb::EndpointDescriptor<'_>> for EndpointDescriptor {
         }
     }
 }
-
-impl From<rusb::DeviceDescriptor> for Properties {
-    fn from(d: rusb::DeviceDescriptor) -> Self {
-        Self {
-            device_class: d.class_code(),
-            device_protocol: d.protocol_code(),
-            device_subclass: d.sub_class_code(),
-            device_version: d.device_version().into(),
-            product_id: d.product_id(),
-            usb_version: d.usb_version().into(),
-            vendor_id: d.vendor_id(),
-        }
-    }
-}

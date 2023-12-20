@@ -14,9 +14,39 @@ pub struct MyDevice<T: rusb::UsbContext> {
 }
 
 impl<T> MyDevice<T> where T: rusb::UsbContext {
+    fn get_language(handle: &rusb::DeviceHandle<T>, timeout: Duration) -> Result<rusb::Language> {
+        let languages = handle.read_languages(timeout)?;
+        let language = languages
+            .first()
+            .ok_or(Error::msg("No language to read configuration"))?;
+            
+        Ok(*language)
+    }
+}
+
+impl<T> MyDevice<T> where T: rusb::UsbContext {
     fn get_properties(&self) -> Result<Properties> {
         let device = &self.device;
-        Ok(device.device_descriptor()?.into())
+        let d = device.device_descriptor()?;
+        let handle = device.open()?;
+        
+        let timeout = Duration::from_secs(1);
+        
+        let language = MyDevice::get_language(&handle, timeout)?;
+            
+        let device_name = handle.read_product_string(language, &d, timeout)?;
+        
+        let props = Properties {
+            device_name: device_name,
+            device_class: d.class_code(),
+            device_protocol: d.protocol_code(),
+            device_subclass: d.sub_class_code(),
+            device_version: d.device_version().into(),
+            product_id: d.product_id(),
+            usb_version: d.usb_version().into(),
+            vendor_id: d.vendor_id(),
+        };
+        Ok(props)
     }
 
     fn get_configurations(&self) -> Result<Vec<Configuration>> {

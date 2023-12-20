@@ -46,6 +46,7 @@ interface types {
     }
     
     record properties {
+        device-name: string,
         device-class: u8,
         device-protocol: u8,
         device-subclass: u8,
