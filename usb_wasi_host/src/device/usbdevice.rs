@@ -1,12 +1,13 @@
 use crate::bindings::component::usb as world;
 use anyhow::{Error, Result};
 use async_trait::async_trait;
+use rusb::UsbContext;
 use std::time::Duration;
 use wasmtime::component::Resource;
 use wasmtime_wasi::preview2::WasiView;
 
 use world::device::HostUsbDevice;
-use world::types::{Configuration, Interface, InterfaceDescriptor, Properties};
+use world::types::{Configuration, Interface, InterfaceDescriptor, Properties, UsbError};
 
 #[derive(Debug)]
 pub struct MyDevice<T: rusb::UsbContext> {
@@ -28,16 +29,7 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
     fn get_properties(&self) -> Result<Properties> {
         let device = &self.device;
         let d = device.device_descriptor()?;
-        let handle = device.open()?;
-        
-        let timeout = Duration::from_secs(1);
-        
-        let language = MyDevice::get_language(&handle, timeout)?;
-            
-        let device_name = handle.read_product_string(language, &d, timeout)?;
-        
         let props = Properties {
-            device_name: device_name,
             device_class: d.class_code(),
             device_protocol: d.protocol_code(),
             device_subclass: d.sub_class_code(),
@@ -47,6 +39,20 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
             vendor_id: d.vendor_id(),
         };
         Ok(props)
+    }
+    
+    fn get_name(&self) -> Result<String> {
+        let device = &self.device;
+        let d = device.device_descriptor()?;
+        let handle = device.open()?;
+        
+        let timeout = Duration::from_secs(1);
+        
+        let language = MyDevice::get_language(&handle, timeout)?;
+            
+        let device_name = handle.read_product_string(language, &d, timeout)?;
+        
+        Ok(device_name)
     }
 
     fn get_configurations(&self) -> Result<Vec<Configuration>> {
@@ -104,16 +110,29 @@ impl<T> HostUsbDevice for T
 where
     T: WasiView
 {
-    fn drop(&mut self, rep: Resource<MyDevice<rusb::GlobalContext>>) -> Result<()> {
+    fn drop(&mut self, rep: Resource<MyDevice<rusb::Context>>) -> Result<()> {
         Ok(self.table_mut().delete(rep).map(|_| ())?)
     }
 
-    async fn properties(&mut self, device: Resource<MyDevice<rusb::GlobalContext>>) -> Result<Properties> {
-        self.table().get(&device)?.get_properties()
+    async fn properties(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Properties> {
+        
+        self.table().get(&device).map_err(|e| {
+            println!("{:?}", e);
+            e
+        })?.get_properties()
     }
 
-    async fn configurations(&mut self, device: Resource<MyDevice<rusb::GlobalContext>>) -> Result<Vec<Configuration>> {
+    async fn configurations(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Vec<Configuration>> {
         self.table().get(&device)?.get_configurations()
+    }
+    
+    async fn get_name(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<String, UsbError>> {
+        // Ok(self.table().get(&device)?.get_name().unwrap_or("Unknown Name".to_string()))
+        let result = match self.table().get(&device)?.get_name() {
+            Ok(a) => Ok(a),
+            Err(e) => Err(UsbError::DeviceDisconnected) 
+        };
+        Ok(result)
     }
 }
 
@@ -122,8 +141,10 @@ impl<T> world::device::Host for T
 where
     T: WasiView
 {
-    async fn get_devices(&mut self) -> Result<Vec<Resource<MyDevice<rusb::GlobalContext>>>> {
-        rusb::devices()?
+    async fn get_devices(&mut self) -> Result<Vec<Resource<MyDevice<rusb::Context>>>> {
+        let context = rusb::Context::new();
+        let devices = context.unwrap().devices()?;
+        devices
             .iter()
             .map(|device| {
                 self.table_mut()

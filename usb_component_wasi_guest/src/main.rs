@@ -1,6 +1,6 @@
 cargo_component_bindings::generate!();
 
-use crate::bindings::component::usb::device::get_devices;
+use crate::bindings::component::usb::{device::get_devices, events::{update, DeviceConnectionEvent}};
 use crate::bindings::Guest;
 
 use crate::bindings::component::usb::device::UsbDevice;
@@ -18,7 +18,7 @@ impl Guest for Component {
             .iter()
             .map(|d| {
                 (
-                    d.properties().device_name, 
+                    d.get_name(), 
                     d.configurations()
                     .iter()
                     .map(|c| c.name.clone().unwrap_or("?".to_string()))
@@ -30,6 +30,25 @@ impl Guest for Component {
 
         println!("Device names: {:#?}", mapped);
         
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        tokio::spawn(async {
+            loop {
+                match update() {
+                    DeviceConnectionEvent::Connected(device) => {
+                        let name = device.get_name();
+                        println!("Connected: {:?}", name);
+                    },
+                    DeviceConnectionEvent::Disconnected(device) => {
+                        let name = device.properties().product_id;
+                        println!("Disconnected: {:?}", name);
+                    },
+
+                    DeviceConnectionEvent::Pending => tokio::time::sleep(std::time::Duration::from_secs(1)).await,
+                    DeviceConnectionEvent::Closed => println!("Closed Connection.")
+                }
+            }
+        });
+        
+        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+        println!("Stopped sleeping...");
     }
 }

@@ -2,6 +2,7 @@ package component:usb-component-wasi-guest;
 
 world root {
 	import component:usb/device@0.1.0;
+	import component:usb/events@0.1.0;
 	
 	export run: func();
 }

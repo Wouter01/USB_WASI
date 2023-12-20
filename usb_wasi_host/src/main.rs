@@ -1,8 +1,10 @@
-use anyhow::Result;
+use anyhow::{Error, Result};
 use clap::Parser;
+use tokio::sync::mpsc::error::TryRecvError;
 use std::path::PathBuf;
 use wasmtime::{component::*, Config, Engine, Store};
 use wasmtime_wasi::preview2::{command, Table, WasiCtx, WasiCtxBuilder, WasiView};
+use async_trait::async_trait;
 
 use crate::bindings::UsbHost;
 
@@ -11,7 +13,7 @@ pub mod device;
 pub use device::usbdevice::MyDevice;
 mod events;
 
-pub type GlobalUsbDevice = MyDevice<rusb::GlobalContext>;
+pub type GlobalUsbDevice = MyDevice<rusb::Context>;
 
 pub mod bindings {
     wasmtime::component::bindgen!({
@@ -26,13 +28,15 @@ pub mod bindings {
 struct ServerWasiView {
     table: Table,
     ctx: WasiCtx,
+    updates: tokio::sync::mpsc::Receiver<events::DeviceConnectionEvent>
 }
 
 impl ServerWasiView {
     fn new() -> Self {
         let table = Table::new();
         let ctx = WasiCtxBuilder::new().inherit_stdio().build();
-        Self { table, ctx }
+        let stream = events::device_connection_updates();
+        Self { table, ctx, updates: stream }
     }
 }
 
@@ -55,6 +59,30 @@ impl WasiView for ServerWasiView {
 }
 
 impl bindings::component::usb::types::Host for ServerWasiView {}
+
+use bindings::component::usb::events::{Host as EventsHost, DeviceConnectionEvent as WasmDeviceConnectionEvent};
+
+#[async_trait]
+impl EventsHost for ServerWasiView {
+    async fn update(&mut self) -> Result<WasmDeviceConnectionEvent> {
+        let mapped = match self.updates.try_recv() {
+            Ok(events::DeviceConnectionEvent::Connected(device)) => {
+                let d = self.table_mut().push(device)?;
+                WasmDeviceConnectionEvent::Connected(d)
+            },
+            
+            // TODO: Should this drop the device instead of creating a new one?
+            Ok(events::DeviceConnectionEvent::Disconnected(device)) => {
+                let d = self.table_mut().push(device)?;
+                WasmDeviceConnectionEvent::Disconnected(d)
+            },
+            Err(TryRecvError::Empty) => WasmDeviceConnectionEvent::Pending,
+            Err(TryRecvError::Disconnected) => WasmDeviceConnectionEvent::Closed
+        };
+        
+        Ok(mapped)
+    }
+}
 
 #[derive(Parser)]
 #[clap(name = "usb", version = env!("CARGO_PKG_VERSION"))]
@@ -117,11 +145,12 @@ async fn main() -> Result<()> {
     let mut app = UsbDemoApp::create(parsed.component).await?;
     let runner = &mut app.runner;
     
-    let mut stream = events::device_connection_updates();
-    while let Some(message) = stream.recv().await {
-        println!("Received: {:?}", message);
-        let _ = start_guest(runner).await;
-    }
+    // let mut stream = events::device_connection_updates();
+    // while let Some(message) = stream.recv().await {
+    //     println!("Received: {:?}", message);
+    //     
+    // }
+    let _ = start_guest(runner).await;
     
     Ok(())
 }
