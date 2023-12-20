@@ -72,10 +72,7 @@ struct UsbDemoApp {
 struct Runner {
     engine: Engine,
     linker: Linker<ServerWasiView>,
-    instance: Instance,
-    component: Component,
-    store: Store<ServerWasiView>,
-    run: TypedFunc<(), ()>
+    component: Component
 }
 
 impl UsbDemoApp {
@@ -88,25 +85,15 @@ impl UsbDemoApp {
         let engine = Engine::new(&config)?;
         let mut linker = Linker::new(&engine);
 
-        let data = ServerWasiView::new();
-
         command::add_to_linker(&mut linker)?;
         let component = Component::from_file(&engine, component)?;
 
         UsbHost::add_to_linker(&mut linker, |view| view)?;
         
-        let mut store = Store::new(&engine, data);
-
-        let instance = linker.instantiate_async(&mut store, &component).await?;
-        let run = instance.get_typed_func::<(), ()>(&mut store, "hello")?;
-        
         let runner = Runner {
             engine,
             linker,
-            instance,
-            component,
-            store,
-            run
+            component
         };
         
         Ok(Self { runner })
@@ -116,13 +103,11 @@ impl UsbDemoApp {
 async fn start_guest(runner: &mut Runner) -> Result<()> {
     let data = ServerWasiView::new();
     let mut store = Store::new(&runner.engine, data);
-    let component = runner.component.clone();
-    let linker = runner.linker.clone();
-    let instance = linker.instantiate_async(&mut store, &component).await?;
-    let run = instance.get_typed_func::<(), ()>(&mut store, "hello").unwrap();
     
-    let _ = run.call_async(&mut store, ()).await;
-    Ok(())
+    let instance = &runner.linker.instantiate_async(&mut store, &runner.component).await?;
+    let run = instance.get_typed_func::<(), ()>(&mut store, "run").unwrap();
+    
+    run.call_async(&mut store, ()).await
 }
 
 #[tokio::main]
@@ -135,7 +120,7 @@ async fn main() -> Result<()> {
     let mut stream = events::device_connection_updates();
     while let Some(message) = stream.recv().await {
         println!("Received: {:?}", message);
-        start_guest(runner).await;
+        let _ = start_guest(runner).await;
     }
     
     Ok(())
