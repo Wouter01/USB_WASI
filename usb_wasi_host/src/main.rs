@@ -3,7 +3,7 @@ use clap::Parser;
 use tokio::sync::mpsc::error::TryRecvError;
 use std::path::PathBuf;
 use wasmtime::{component::*, Config, Engine, Store};
-use wasmtime_wasi::preview2::{command, Table, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::preview2::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use async_trait::async_trait;
 
 use bindings::component::usb::events::{Host as EventsHost, DeviceConnectionEvent as WasmDeviceConnectionEvent};
@@ -29,7 +29,7 @@ pub mod bindings {
 
 #[allow(dead_code)]
 struct ServerWasiView {
-    table: Table,
+    table: ResourceTable,
     ctx: WasiCtx,
     updates: tokio::sync::mpsc::Receiver<events::DeviceConnectionEvent>,
     registration: rusb::Registration<rusb::Context>,
@@ -38,7 +38,7 @@ struct ServerWasiView {
 
 impl ServerWasiView {
     fn new() -> Result<Self> {
-        let table = Table::new();
+        let table = ResourceTable::new();
         let ctx = WasiCtxBuilder::new().inherit_stdio().build();
         let (receiver, registration, task) = events::device_connection_updates()?;
         Ok(Self { table, ctx, updates: receiver, registration, task })
@@ -46,11 +46,11 @@ impl ServerWasiView {
 }
 
 impl WasiView for ServerWasiView {
-    fn table(&self) -> &Table {
+    fn table(&self) -> &ResourceTable {
         &self.table
     }
 
-    fn table_mut(&mut self) -> &mut Table {
+    fn table_mut(&mut self) -> &mut ResourceTable {
         &mut self.table
     }
 
