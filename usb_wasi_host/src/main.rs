@@ -3,7 +3,7 @@ use clap::Parser;
 use tokio::sync::mpsc::error::TryRecvError;
 use std::path::PathBuf;
 use wasmtime::{component::*, Config, Engine, Store};
-use wasmtime_wasi::preview2::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::preview2::{command, WasiCtx, WasiCtxBuilder, WasiView};
 use async_trait::async_trait;
 
 use bindings::component::usb::events::{Host as EventsHost, DeviceConnectionEvent as WasmDeviceConnectionEvent};
@@ -46,19 +46,19 @@ impl ServerWasiView {
 }
 
 impl WasiView for ServerWasiView {
-    fn table(&self) -> &ResourceTable {
-        &self.table
-    }
+    // fn table(&self) -> &ResourceTable {
+    //     &self.table
+    // }
 
-    fn table_mut(&mut self) -> &mut ResourceTable {
+    fn table(&mut self) -> &mut ResourceTable {
         &mut self.table
     }
 
-    fn ctx(&self) -> &WasiCtx {
-        &self.ctx
-    }
+    // fn ctx(&self) -> &WasiCtx {
+    //     &self.ctx
+    // }
 
-    fn ctx_mut(&mut self) -> &mut WasiCtx {
+    fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.ctx
     }
 }
@@ -70,13 +70,13 @@ impl EventsHost for ServerWasiView {
     async fn update(&mut self) -> Result<WasmDeviceConnectionEvent> {
         let mapped = match self.updates.try_recv() {
             Ok(events::DeviceConnectionEvent::Connected(device)) => {
-                let d = self.table_mut().push(device)?;
+                let d = self.table().push(device)?;
                 WasmDeviceConnectionEvent::Connected(d)
             },
             
             // TODO: Should this drop the device instead of creating a new one?
             Ok(events::DeviceConnectionEvent::Disconnected(device)) => {
-                let d = self.table_mut().push(device)?;
+                let d = self.table().push(device)?;
                 WasmDeviceConnectionEvent::Disconnected(d)
             },
             Err(TryRecvError::Empty) => WasmDeviceConnectionEvent::Pending,
@@ -135,7 +135,12 @@ async fn start_guest(runner: &mut Runner) -> Result<()> {
     let data = ServerWasiView::new()?;
     let mut store = Store::new(&runner.engine, data);
     
+    println!("blabla");
+    
     let instance = &runner.linker.instantiate_async(&mut store, &runner.component).await?;
+    
+    println!("blabala");
+    
     let run = instance.get_typed_func::<(), ()>(&mut store, "run").unwrap();
     
     run.call_async(&mut store, ()).await
@@ -153,7 +158,10 @@ async fn main() -> Result<()> {
     //     println!("Received: {:?}", message);
     //     
     // }
-    let _ = start_guest(runner).await;
+    
+    let result = start_guest(runner).await;
+    
+    println!("{:?}", result);
     
     println!("Guest Ended");
     

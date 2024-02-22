@@ -111,7 +111,7 @@ where
     T: WasiView
 {
     fn drop(&mut self, rep: Resource<MyDevice<rusb::Context>>) -> Result<()> {
-        Ok(self.table_mut().delete(rep).map(|_| ())?)
+        Ok(self.table().delete(rep).map(|_| ())?)
     }
 
     async fn properties(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Properties> {
@@ -151,7 +151,7 @@ where
         devices
             .iter()
             .map(|device| {
-                self.table_mut()
+                self.table()
                     .push(MyDevice { device })
                     .map_err(Error::from)
             })
