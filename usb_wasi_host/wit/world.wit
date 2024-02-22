@@ -67,8 +67,7 @@ interface device {
         //constructor(init: list<u8>);
         get-name: func() -> result<string, usb-error>;
         properties: func() -> properties;
-        configurations: func() -> list<configuration>;
-        
+        configurations: func() -> result<list<configuration>, usb-error>;
     }
     
     get-devices: func() -> list<usb-device>;

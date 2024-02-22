@@ -122,8 +122,13 @@ where
         })?.get_properties()
     }
 
-    async fn configurations(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Vec<Configuration>> {
-        self.table().get(&device)?.get_configurations()
+    async fn configurations(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<Vec<Configuration>, UsbError>> {
+        let result = match self.table().get(&device)?.get_configurations() {
+            Ok(a) => Ok(a),
+            Err(_) => Err(UsbError::DeviceDisconnected)
+        };
+        
+        Ok(result)
     }
     
     async fn get_name(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<String, UsbError>> {
