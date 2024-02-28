@@ -2,3 +2,4 @@
 .DS_Store
 /.nova
 /target
+/.photon/settings.json

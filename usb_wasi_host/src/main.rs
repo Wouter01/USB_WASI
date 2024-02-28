@@ -46,17 +46,10 @@ impl ServerWasiView {
 }
 
 impl WasiView for ServerWasiView {
-    // fn table(&self) -> &ResourceTable {
-    //     &self.table
-    // }
 
     fn table(&mut self) -> &mut ResourceTable {
         &mut self.table
     }
-
-    // fn ctx(&self) -> &WasiCtx {
-    //     &self.ctx
-    // }
 
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.ctx
@@ -135,12 +128,7 @@ async fn start_guest(runner: &mut Runner) -> Result<()> {
     let data = ServerWasiView::new()?;
     let mut store = Store::new(&runner.engine, data);
     
-    println!("blabla");
-    
     let instance = &runner.linker.instantiate_async(&mut store, &runner.component).await?;
-    
-    println!("blabala");
-    
     let run = instance.get_typed_func::<(), ()>(&mut store, "run").unwrap();
     
     run.call_async(&mut store, ()).await
@@ -152,12 +140,6 @@ async fn main() -> Result<()> {
     
     let mut app = UsbDemoApp::create(parsed.component).await?;
     let runner = &mut app.runner;
-    
-    // let mut stream = events::device_connection_updates();
-    // while let Some(message) = stream.recv().await {
-    //     println!("Received: {:?}", message);
-    //     
-    // }
     
     let result = start_guest(runner).await;
     
