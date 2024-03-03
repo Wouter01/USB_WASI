@@ -12,10 +12,11 @@ use crate::bindings::UsbHost;
 
 pub mod conversion;
 pub mod device;
-pub use device::usbdevice::MyDevice;
+pub use device::usbdevice::{MyDevice, MyDeviceHandle};
 mod events;
 
 pub type GlobalUsbDevice = MyDevice<rusb::Context>;
+pub type GlobalDeviceHandle = MyDeviceHandle;
 
 pub mod bindings {
     wasmtime::component::bindgen!({
@@ -23,6 +24,7 @@ pub mod bindings {
         async: true,
         with: {
             "component:usb/device/usb-device": super::GlobalUsbDevice,
+            "component:usb/device/device-handle": super::GlobalDeviceHandle,
         }
     });
 }
@@ -66,7 +68,7 @@ impl EventsHost for ServerWasiView {
                 let d = self.table().push(device)?;
                 WasmDeviceConnectionEvent::Connected(d)
             },
-            
+
             // TODO: Should this drop the device instead of creating a new one?
             Ok(events::DeviceConnectionEvent::Disconnected(device)) => {
                 let d = self.table().push(device)?;
@@ -75,7 +77,7 @@ impl EventsHost for ServerWasiView {
             Err(TryRecvError::Empty) => WasmDeviceConnectionEvent::Pending,
             Err(TryRecvError::Disconnected) => WasmDeviceConnectionEvent::Closed
         };
-        
+
         Ok(mapped)
     }
 }
@@ -101,7 +103,7 @@ struct Runner {
 
 impl UsbDemoApp {
     async fn create(component: PathBuf) -> Result<Self> {
-        
+
         let mut config = Config::default();
         config.wasm_component_model(true);
         config.async_support(true);
@@ -113,13 +115,13 @@ impl UsbDemoApp {
         let component = Component::from_file(&engine, component)?;
 
         UsbHost::add_to_linker(&mut linker, |view| view)?;
-        
+
         let runner = Runner {
             engine,
             linker,
             component
         };
-        
+
         Ok(Self { runner })
     }
 }
@@ -127,25 +129,25 @@ impl UsbDemoApp {
 async fn start_guest(runner: &mut Runner) -> Result<()> {
     let data = ServerWasiView::new()?;
     let mut store = Store::new(&runner.engine, data);
-    
+
     let instance = &runner.linker.instantiate_async(&mut store, &runner.component).await?;
     let run = instance.get_typed_func::<(), ()>(&mut store, "run").unwrap();
-    
+
     run.call_async(&mut store, ()).await
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let parsed = UsbDemoAppParser::parse();
-    
+
     let mut app = UsbDemoApp::create(parsed.component).await?;
     let runner = &mut app.runner;
-    
+
     let result = start_guest(runner).await;
-    
+
     println!("{:?}", result);
-    
+
     println!("Guest Ended");
-    
+
     Ok(())
 }

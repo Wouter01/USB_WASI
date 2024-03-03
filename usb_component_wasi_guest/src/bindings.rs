@@ -88,6 +88,106 @@ pub mod component {
       
       #[repr(u8)]
       #[derive(Clone, Copy, Eq, PartialEq)]
+      pub enum DeviceHandleError {
+        Io,
+        InvalidParam,
+        Access,
+        NoDevice,
+        NotFound,
+        Busy,
+        Timeout,
+        Overflow,
+        Pipe,
+        Interrupted,
+        NoMem,
+        NotSupported,
+        BadDescriptor,
+        Other,
+      }
+      impl DeviceHandleError{
+        pub fn name(&self) -> &'static str {
+          match self {
+            DeviceHandleError::Io => "io",
+            DeviceHandleError::InvalidParam => "invalid-param",
+            DeviceHandleError::Access => "access",
+            DeviceHandleError::NoDevice => "no-device",
+            DeviceHandleError::NotFound => "not-found",
+            DeviceHandleError::Busy => "busy",
+            DeviceHandleError::Timeout => "timeout",
+            DeviceHandleError::Overflow => "overflow",
+            DeviceHandleError::Pipe => "pipe",
+            DeviceHandleError::Interrupted => "interrupted",
+            DeviceHandleError::NoMem => "no-mem",
+            DeviceHandleError::NotSupported => "not-supported",
+            DeviceHandleError::BadDescriptor => "bad-descriptor",
+            DeviceHandleError::Other => "other",
+          }
+        }
+        pub fn message(&self) -> &'static str {
+          match self {
+            DeviceHandleError::Io => "",
+            DeviceHandleError::InvalidParam => "",
+            DeviceHandleError::Access => "",
+            DeviceHandleError::NoDevice => "",
+            DeviceHandleError::NotFound => "",
+            DeviceHandleError::Busy => "",
+            DeviceHandleError::Timeout => "",
+            DeviceHandleError::Overflow => "",
+            DeviceHandleError::Pipe => "",
+            DeviceHandleError::Interrupted => "",
+            DeviceHandleError::NoMem => "",
+            DeviceHandleError::NotSupported => "",
+            DeviceHandleError::BadDescriptor => "",
+            DeviceHandleError::Other => "",
+          }
+        }
+      }
+      impl ::core::fmt::Debug for DeviceHandleError{
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("DeviceHandleError")
+          .field("code", &(*self as i32))
+          .field("name", &self.name())
+          .field("message", &self.message())
+          .finish()
+        }
+      }
+      impl ::core::fmt::Display for DeviceHandleError{
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          write!(f, "{} (error {})", self.name(), *self as i32)
+        }
+      }
+      
+      impl std::error::Error for DeviceHandleError{}
+      
+      impl DeviceHandleError{
+        pub(crate) unsafe fn _lift(val: u8) -> DeviceHandleError{
+          if !cfg!(debug_assertions) {
+            return ::core::mem::transmute(val);
+          }
+          
+          match val {
+            0 => DeviceHandleError::Io,
+            1 => DeviceHandleError::InvalidParam,
+            2 => DeviceHandleError::Access,
+            3 => DeviceHandleError::NoDevice,
+            4 => DeviceHandleError::NotFound,
+            5 => DeviceHandleError::Busy,
+            6 => DeviceHandleError::Timeout,
+            7 => DeviceHandleError::Overflow,
+            8 => DeviceHandleError::Pipe,
+            9 => DeviceHandleError::Interrupted,
+            10 => DeviceHandleError::NoMem,
+            11 => DeviceHandleError::NotSupported,
+            12 => DeviceHandleError::BadDescriptor,
+            13 => DeviceHandleError::Other,
+            
+            _ => panic!("invalid enum discriminant"),
+          }
+        }
+      }
+      
+      #[repr(u8)]
+      #[derive(Clone, Copy, Eq, PartialEq)]
       pub enum Direction {
         In,
         Out,
@@ -297,11 +397,12 @@ pub mod component {
       pub struct Configuration {
         pub name: Option<wit_bindgen::rt::string::String>,
         pub max_power: u16,
+        pub number: u8,
         pub interfaces: wit_bindgen::rt::vec::Vec::<Interface>,
       }
       impl ::core::fmt::Debug for Configuration {
         fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-          f.debug_struct("Configuration").field("name", &self.name).field("max-power", &self.max_power).field("interfaces", &self.interfaces).finish()
+          f.debug_struct("Configuration").field("name", &self.name).field("max-power", &self.max_power).field("number", &self.number).field("interfaces", &self.interfaces).finish()
         }
       }
       #[repr(C)]
@@ -345,6 +446,7 @@ pub mod component {
       pub type Properties = super::super::super::component::usb::types::Properties;
       pub type Configuration = super::super::super::component::usb::types::Configuration;
       pub type UsbError = super::super::super::component::usb::types::UsbError;
+      pub type DeviceHandleError = super::super::super::component::usb::types::DeviceHandleError;
       
       #[derive(Debug)]
       #[repr(transparent)]
@@ -383,6 +485,52 @@ pub mod component {
             #[link(wasm_import_module = "component:usb/device@0.1.0")]
             extern "C" {
               #[link_name = "[resource-drop]usb-device"]
+              fn drop(_: u32);
+            }
+            
+            drop(_handle);
+          }
+        }
+      }
+      
+      
+      #[derive(Debug)]
+      #[repr(transparent)]
+      pub struct DeviceHandle{
+        handle: wit_bindgen::rt::Resource<DeviceHandle>,
+      }
+      
+      impl DeviceHandle{
+        #[doc(hidden)]
+        pub unsafe fn from_handle(handle: u32) -> Self {
+          Self {
+            handle: wit_bindgen::rt::Resource::from_handle(handle),
+          }
+        }
+        
+        #[doc(hidden)]
+        pub fn into_handle(self) -> u32 {
+          wit_bindgen::rt::Resource::into_handle(self.handle)
+        }
+        
+        #[doc(hidden)]
+        pub fn handle(&self) -> u32 {
+          wit_bindgen::rt::Resource::handle(&self.handle)
+        }
+      }
+      
+      
+      unsafe impl wit_bindgen::rt::WasmResource for DeviceHandle{
+        #[inline]
+        unsafe fn drop(_handle: u32) {
+          #[cfg(not(target_arch = "wasm32"))]
+          unreachable!();
+          
+          #[cfg(target_arch = "wasm32")]
+          {
+            #[link(wasm_import_module = "component:usb/device@0.1.0")]
+            extern "C" {
+              #[link_name = "[resource-drop]device-handle"]
               fn drop(_: u32);
             }
             
@@ -521,85 +669,86 @@ pub mod component {
                 let e = {
                   let l2 = *((ptr0 + 4) as *const i32);
                   let l3 = *((ptr0 + 8) as *const i32);
-                  let base30 = l2;
-                  let len30 = l3;
-                  let mut result30 = Vec::with_capacity(len30 as usize);
-                  for i in 0..len30 {
-                    let base = base30 + i * 24;
-                    let e30 = {
+                  let base31 = l2;
+                  let len31 = l3;
+                  let mut result31 = Vec::with_capacity(len31 as usize);
+                  for i in 0..len31 {
+                    let base = base31 + i * 24;
+                    let e31 = {
                       let l4 = i32::from(*((base + 0) as *const u8));
                       let l8 = i32::from(*((base + 12) as *const u16));
-                      let l9 = *((base + 16) as *const i32);
-                      let l10 = *((base + 20) as *const i32);
-                      let base29 = l9;
-                      let len29 = l10;
-                      let mut result29 = Vec::with_capacity(len29 as usize);
-                      for i in 0..len29 {
-                        let base = base29 + i * 12;
-                        let e29 = {
-                          let l11 = i32::from(*((base + 0) as *const u8));
-                          let l12 = *((base + 4) as *const i32);
-                          let l13 = *((base + 8) as *const i32);
-                          let base28 = l12;
-                          let len28 = l13;
-                          let mut result28 = Vec::with_capacity(len28 as usize);
-                          for i in 0..len28 {
-                            let base = base28 + i * 12;
-                            let e28 = {
-                              let l14 = i32::from(*((base + 0) as *const u8));
-                              let l15 = *((base + 4) as *const i32);
-                              let l16 = *((base + 8) as *const i32);
-                              let base27 = l15;
-                              let len27 = l16;
-                              let mut result27 = Vec::with_capacity(len27 as usize);
-                              for i in 0..len27 {
-                                let base = base27 + i * 12;
-                                let e27 = {
-                                  let l17 = i32::from(*((base + 0) as *const u8));
-                                  let l18 = i32::from(*((base + 1) as *const u8));
-                                  let l19 = i32::from(*((base + 2) as *const u8));
-                                  let l20 = i32::from(*((base + 4) as *const u16));
-                                  let l21 = i32::from(*((base + 6) as *const u8));
-                                  let l22 = i32::from(*((base + 7) as *const u8));
-                                  let l23 = i32::from(*((base + 8) as *const u8));
-                                  let l24 = i32::from(*((base + 9) as *const u8));
-                                  let l25 = i32::from(*((base + 10) as *const u8));
-                                  let l26 = i32::from(*((base + 11) as *const u8));
+                      let l9 = i32::from(*((base + 14) as *const u8));
+                      let l10 = *((base + 16) as *const i32);
+                      let l11 = *((base + 20) as *const i32);
+                      let base30 = l10;
+                      let len30 = l11;
+                      let mut result30 = Vec::with_capacity(len30 as usize);
+                      for i in 0..len30 {
+                        let base = base30 + i * 12;
+                        let e30 = {
+                          let l12 = i32::from(*((base + 0) as *const u8));
+                          let l13 = *((base + 4) as *const i32);
+                          let l14 = *((base + 8) as *const i32);
+                          let base29 = l13;
+                          let len29 = l14;
+                          let mut result29 = Vec::with_capacity(len29 as usize);
+                          for i in 0..len29 {
+                            let base = base29 + i * 12;
+                            let e29 = {
+                              let l15 = i32::from(*((base + 0) as *const u8));
+                              let l16 = *((base + 4) as *const i32);
+                              let l17 = *((base + 8) as *const i32);
+                              let base28 = l16;
+                              let len28 = l17;
+                              let mut result28 = Vec::with_capacity(len28 as usize);
+                              for i in 0..len28 {
+                                let base = base28 + i * 12;
+                                let e28 = {
+                                  let l18 = i32::from(*((base + 0) as *const u8));
+                                  let l19 = i32::from(*((base + 1) as *const u8));
+                                  let l20 = i32::from(*((base + 2) as *const u8));
+                                  let l21 = i32::from(*((base + 4) as *const u16));
+                                  let l22 = i32::from(*((base + 6) as *const u8));
+                                  let l23 = i32::from(*((base + 7) as *const u8));
+                                  let l24 = i32::from(*((base + 8) as *const u8));
+                                  let l25 = i32::from(*((base + 9) as *const u8));
+                                  let l26 = i32::from(*((base + 10) as *const u8));
+                                  let l27 = i32::from(*((base + 11) as *const u8));
                                   
                                   super::super::super::component::usb::types::EndpointDescriptor{
-                                    address: l17 as u8,
-                                    direction: super::super::super::component::usb::types::Direction::_lift(l18 as u8),
-                                    interval: l19 as u8,
-                                    max_packet_size: l20 as u16,
-                                    number: l21 as u8,
-                                    refresh: l22 as u8,
-                                    sync_type: super::super::super::component::usb::types::SyncType::_lift(l23 as u8),
-                                    synch_address: l24 as u8,
-                                    transfer_type: super::super::super::component::usb::types::TransferType::_lift(l25 as u8),
-                                    usage_type: super::super::super::component::usb::types::UsageType::_lift(l26 as u8),
+                                    address: l18 as u8,
+                                    direction: super::super::super::component::usb::types::Direction::_lift(l19 as u8),
+                                    interval: l20 as u8,
+                                    max_packet_size: l21 as u16,
+                                    number: l22 as u8,
+                                    refresh: l23 as u8,
+                                    sync_type: super::super::super::component::usb::types::SyncType::_lift(l24 as u8),
+                                    synch_address: l25 as u8,
+                                    transfer_type: super::super::super::component::usb::types::TransferType::_lift(l26 as u8),
+                                    usage_type: super::super::super::component::usb::types::UsageType::_lift(l27 as u8),
                                   }
                                 };
-                                result27.push(e27);
+                                result28.push(e28);
                               }
-                              wit_bindgen::rt::dealloc(base27, (len27 as usize) * 12, 2);
+                              wit_bindgen::rt::dealloc(base28, (len28 as usize) * 12, 2);
                               
                               super::super::super::component::usb::types::InterfaceDescriptor{
-                                class_code: l14 as u8,
-                                endpoint_descriptors: result27,
+                                class_code: l15 as u8,
+                                endpoint_descriptors: result28,
                               }
                             };
-                            result28.push(e28);
+                            result29.push(e29);
                           }
-                          wit_bindgen::rt::dealloc(base28, (len28 as usize) * 12, 4);
+                          wit_bindgen::rt::dealloc(base29, (len29 as usize) * 12, 4);
                           
                           super::super::super::component::usb::types::Interface{
-                            number: l11 as u8,
-                            descriptors: result28,
+                            number: l12 as u8,
+                            descriptors: result29,
                           }
                         };
-                        result29.push(e29);
+                        result30.push(e30);
                       }
-                      wit_bindgen::rt::dealloc(base29, (len29 as usize) * 12, 4);
+                      wit_bindgen::rt::dealloc(base30, (len30 as usize) * 12, 4);
                       
                       super::super::super::component::usb::types::Configuration{
                         name: match l4 {
@@ -618,22 +767,275 @@ pub mod component {
                           _ => wit_bindgen::rt::invalid_enum_discriminant(),
                         },
                         max_power: l8 as u16,
-                        interfaces: result29,
+                        number: l9 as u8,
+                        interfaces: result30,
                       }
                     };
-                    result30.push(e30);
+                    result31.push(e31);
                   }
-                  wit_bindgen::rt::dealloc(base30, (len30 as usize) * 24, 4);
+                  wit_bindgen::rt::dealloc(base31, (len31 as usize) * 24, 4);
                   
-                  result30
+                  result31
                 };
                 Ok(e)
               }
               1 => {
                 let e = {
-                  let l31 = i32::from(*((ptr0 + 4) as *const u8));
+                  let l32 = i32::from(*((ptr0 + 4) as *const u8));
                   
-                  super::super::super::component::usb::types::UsbError::_lift(l31 as u8)
+                  super::super::super::component::usb::types::UsbError::_lift(l32 as u8)
+                };
+                Err(e)
+              }
+              _ => wit_bindgen::rt::invalid_enum_discriminant(),
+            }
+          }
+        }
+      }
+      impl UsbDevice {
+        #[allow(unused_unsafe, clippy::all)]
+        pub fn open(&self,) -> Result<DeviceHandle,DeviceHandleError>{
+          
+          #[allow(unused_imports)]
+          use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+          unsafe {
+            
+            #[repr(align(4))]
+            struct RetArea([u8; 8]);
+            let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+            let ptr0 = ret_area.as_mut_ptr() as i32;
+            #[cfg(target_arch = "wasm32")]
+            #[link(wasm_import_module = "component:usb/device@0.1.0")]
+            extern "C" {
+              #[link_name = "[method]usb-device.open"]
+              fn wit_import(_: i32, _: i32, );
+            }
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            fn wit_import(_: i32, _: i32, ){ unreachable!() }
+            wit_import((self).handle() as i32, ptr0);
+            let l1 = i32::from(*((ptr0 + 0) as *const u8));
+            match l1 {
+              0 => {
+                let e = {
+                  let l2 = *((ptr0 + 4) as *const i32);
+                  
+                  DeviceHandle::from_handle(l2 as u32)
+                };
+                Ok(e)
+              }
+              1 => {
+                let e = {
+                  let l3 = i32::from(*((ptr0 + 4) as *const u8));
+                  
+                  super::super::super::component::usb::types::DeviceHandleError::_lift(l3 as u8)
+                };
+                Err(e)
+              }
+              _ => wit_bindgen::rt::invalid_enum_discriminant(),
+            }
+          }
+        }
+      }
+      impl DeviceHandle {
+        #[allow(unused_unsafe, clippy::all)]
+        pub fn set_configuration(&self,configuration: u8,){
+          
+          #[allow(unused_imports)]
+          use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+          unsafe {
+            
+            #[cfg(target_arch = "wasm32")]
+            #[link(wasm_import_module = "component:usb/device@0.1.0")]
+            extern "C" {
+              #[link_name = "[method]device-handle.set-configuration"]
+              fn wit_import(_: i32, _: i32, );
+            }
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            fn wit_import(_: i32, _: i32, ){ unreachable!() }
+            wit_import((self).handle() as i32, wit_bindgen::rt::as_i32(configuration));
+          }
+        }
+      }
+      impl DeviceHandle {
+        #[allow(unused_unsafe, clippy::all)]
+        pub fn claim_interface(&self,interface: u8,){
+          
+          #[allow(unused_imports)]
+          use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+          unsafe {
+            
+            #[cfg(target_arch = "wasm32")]
+            #[link(wasm_import_module = "component:usb/device@0.1.0")]
+            extern "C" {
+              #[link_name = "[method]device-handle.claim-interface"]
+              fn wit_import(_: i32, _: i32, );
+            }
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            fn wit_import(_: i32, _: i32, ){ unreachable!() }
+            wit_import((self).handle() as i32, wit_bindgen::rt::as_i32(interface));
+          }
+        }
+      }
+      impl DeviceHandle {
+        #[allow(unused_unsafe, clippy::all)]
+        pub fn unclaim_interface(&self,interface: u8,){
+          
+          #[allow(unused_imports)]
+          use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+          unsafe {
+            
+            #[cfg(target_arch = "wasm32")]
+            #[link(wasm_import_module = "component:usb/device@0.1.0")]
+            extern "C" {
+              #[link_name = "[method]device-handle.unclaim-interface"]
+              fn wit_import(_: i32, _: i32, );
+            }
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            fn wit_import(_: i32, _: i32, ){ unreachable!() }
+            wit_import((self).handle() as i32, wit_bindgen::rt::as_i32(interface));
+          }
+        }
+      }
+      impl DeviceHandle {
+        #[allow(unused_unsafe, clippy::all)]
+        pub fn write_interrupt(&self,endpoint: u8,data: &[u8],) -> Result<u64,DeviceHandleError>{
+          
+          #[allow(unused_imports)]
+          use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+          unsafe {
+            
+            #[repr(align(8))]
+            struct RetArea([u8; 16]);
+            let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+            let vec0 = data;
+            let ptr0 = vec0.as_ptr() as i32;
+            let len0 = vec0.len() as i32;
+            let ptr1 = ret_area.as_mut_ptr() as i32;
+            #[cfg(target_arch = "wasm32")]
+            #[link(wasm_import_module = "component:usb/device@0.1.0")]
+            extern "C" {
+              #[link_name = "[method]device-handle.write-interrupt"]
+              fn wit_import(_: i32, _: i32, _: i32, _: i32, _: i32, );
+            }
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            fn wit_import(_: i32, _: i32, _: i32, _: i32, _: i32, ){ unreachable!() }
+            wit_import((self).handle() as i32, wit_bindgen::rt::as_i32(endpoint), ptr0, len0, ptr1);
+            let l2 = i32::from(*((ptr1 + 0) as *const u8));
+            match l2 {
+              0 => {
+                let e = {
+                  let l3 = *((ptr1 + 8) as *const i64);
+                  
+                  l3 as u64
+                };
+                Ok(e)
+              }
+              1 => {
+                let e = {
+                  let l4 = i32::from(*((ptr1 + 8) as *const u8));
+                  
+                  super::super::super::component::usb::types::DeviceHandleError::_lift(l4 as u8)
+                };
+                Err(e)
+              }
+              _ => wit_bindgen::rt::invalid_enum_discriminant(),
+            }
+          }
+        }
+      }
+      impl DeviceHandle {
+        #[allow(unused_unsafe, clippy::all)]
+        pub fn write_bulk(&self,endpoint: u8,data: &[u8],) -> Result<u64,DeviceHandleError>{
+          
+          #[allow(unused_imports)]
+          use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+          unsafe {
+            
+            #[repr(align(8))]
+            struct RetArea([u8; 16]);
+            let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+            let vec0 = data;
+            let ptr0 = vec0.as_ptr() as i32;
+            let len0 = vec0.len() as i32;
+            let ptr1 = ret_area.as_mut_ptr() as i32;
+            #[cfg(target_arch = "wasm32")]
+            #[link(wasm_import_module = "component:usb/device@0.1.0")]
+            extern "C" {
+              #[link_name = "[method]device-handle.write-bulk"]
+              fn wit_import(_: i32, _: i32, _: i32, _: i32, _: i32, );
+            }
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            fn wit_import(_: i32, _: i32, _: i32, _: i32, _: i32, ){ unreachable!() }
+            wit_import((self).handle() as i32, wit_bindgen::rt::as_i32(endpoint), ptr0, len0, ptr1);
+            let l2 = i32::from(*((ptr1 + 0) as *const u8));
+            match l2 {
+              0 => {
+                let e = {
+                  let l3 = *((ptr1 + 8) as *const i64);
+                  
+                  l3 as u64
+                };
+                Ok(e)
+              }
+              1 => {
+                let e = {
+                  let l4 = i32::from(*((ptr1 + 8) as *const u8));
+                  
+                  super::super::super::component::usb::types::DeviceHandleError::_lift(l4 as u8)
+                };
+                Err(e)
+              }
+              _ => wit_bindgen::rt::invalid_enum_discriminant(),
+            }
+          }
+        }
+      }
+      impl DeviceHandle {
+        #[allow(unused_unsafe, clippy::all)]
+        pub fn read_bulk(&self,endpoint: u8,) -> Result<(u64,wit_bindgen::rt::vec::Vec::<u8>,),DeviceHandleError>{
+          
+          #[allow(unused_imports)]
+          use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+          unsafe {
+            
+            #[repr(align(8))]
+            struct RetArea([u8; 24]);
+            let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+            let ptr0 = ret_area.as_mut_ptr() as i32;
+            #[cfg(target_arch = "wasm32")]
+            #[link(wasm_import_module = "component:usb/device@0.1.0")]
+            extern "C" {
+              #[link_name = "[method]device-handle.read-bulk"]
+              fn wit_import(_: i32, _: i32, _: i32, );
+            }
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            fn wit_import(_: i32, _: i32, _: i32, ){ unreachable!() }
+            wit_import((self).handle() as i32, wit_bindgen::rt::as_i32(endpoint), ptr0);
+            let l1 = i32::from(*((ptr0 + 0) as *const u8));
+            match l1 {
+              0 => {
+                let e = {
+                  let l2 = *((ptr0 + 8) as *const i64);
+                  let l3 = *((ptr0 + 16) as *const i32);
+                  let l4 = *((ptr0 + 20) as *const i32);
+                  let len5 = l4 as usize;
+                  
+                  (l2 as u64, Vec::from_raw_parts(l3 as *mut _, len5, len5))
+                };
+                Ok(e)
+              }
+              1 => {
+                let e = {
+                  let l6 = i32::from(*((ptr0 + 8) as *const u8));
+                  
+                  super::super::super::component::usb::types::DeviceHandleError::_lift(l6 as u8)
                 };
                 Err(e)
               }
@@ -679,33 +1081,6 @@ pub mod component {
           }
           wit_bindgen::rt::dealloc(base4, (len4 as usize) * 4, 4);
           result4
-        }
-      }
-      #[allow(unused_unsafe, clippy::all)]
-      pub fn transfer_interrupt_in(endpoint: &UsbDevice,) -> wit_bindgen::rt::vec::Vec::<u8>{
-        
-        #[allow(unused_imports)]
-        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
-        unsafe {
-          
-          #[repr(align(4))]
-          struct RetArea([u8; 8]);
-          let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
-          let ptr0 = ret_area.as_mut_ptr() as i32;
-          #[cfg(target_arch = "wasm32")]
-          #[link(wasm_import_module = "component:usb/device@0.1.0")]
-          extern "C" {
-            #[link_name = "transfer-interrupt-in"]
-            fn wit_import(_: i32, _: i32, );
-          }
-          
-          #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: i32, _: i32, ){ unreachable!() }
-          wit_import((endpoint).handle() as i32, ptr0);
-          let l1 = *((ptr0 + 0) as *const i32);
-          let l2 = *((ptr0 + 4) as *const i32);
-          let len3 = l2 as usize;
-          Vec::from_raw_parts(l1 as *mut _, len3, len3)
         }
       }
       
@@ -802,7 +1177,7 @@ pub mod component {
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:root"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 1479] = [0, 97, 115, 109, 13, 0, 1, 0, 0, 25, 22, 119, 105, 116, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 45, 101, 110, 99, 111, 100, 105, 110, 103, 4, 0, 7, 205, 10, 1, 65, 2, 1, 65, 12, 1, 66, 26, 1, 109, 1, 19, 100, 101, 118, 105, 99, 101, 45, 100, 105, 115, 99, 111, 110, 110, 101, 99, 116, 101, 100, 4, 0, 9, 117, 115, 98, 45, 101, 114, 114, 111, 114, 3, 0, 0, 1, 109, 2, 2, 105, 110, 3, 111, 117, 116, 4, 0, 9, 100, 105, 114, 101, 99, 116, 105, 111, 110, 3, 0, 2, 1, 109, 4, 4, 100, 97, 116, 97, 8, 102, 101, 101, 100, 98, 97, 99, 107, 13, 102, 101, 101, 100, 98, 97, 99, 107, 45, 100, 97, 116, 97, 8, 114, 101, 115, 101, 114, 118, 101, 100, 4, 0, 10, 117, 115, 97, 103, 101, 45, 116, 121, 112, 101, 3, 0, 4, 1, 109, 4, 7, 110, 111, 45, 115, 121, 110, 99, 12, 97, 115, 121, 110, 99, 104, 114, 111, 110, 111, 117, 115, 8, 97, 100, 97, 112, 116, 105, 118, 101, 11, 115, 121, 110, 99, 104, 114, 111, 110, 111, 117, 115, 4, 0, 9, 115, 121, 110, 99, 45, 116, 121, 112, 101, 3, 0, 6, 1, 109, 4, 7, 99, 111, 110, 116, 114, 111, 108, 11, 105, 115, 111, 99, 104, 114, 111, 110, 111, 117, 115, 4, 98, 117, 108, 107, 9, 105, 110, 116, 101, 114, 114, 117, 112, 116, 4, 0, 13, 116, 114, 97, 110, 115, 102, 101, 114, 45, 116, 121, 112, 101, 3, 0, 8, 1, 114, 10, 7, 97, 100, 100, 114, 101, 115, 115, 125, 9, 100, 105, 114, 101, 99, 116, 105, 111, 110, 3, 8, 105, 110, 116, 101, 114, 118, 97, 108, 125, 15, 109, 97, 120, 45, 112, 97, 99, 107, 101, 116, 45, 115, 105, 122, 101, 123, 6, 110, 117, 109, 98, 101, 114, 125, 7, 114, 101, 102, 114, 101, 115, 104, 125, 9, 115, 121, 110, 99, 45, 116, 121, 112, 101, 7, 13, 115, 121, 110, 99, 104, 45, 97, 100, 100, 114, 101, 115, 115, 125, 13, 116, 114, 97, 110, 115, 102, 101, 114, 45, 116, 121, 112, 101, 9, 10, 117, 115, 97, 103, 101, 45, 116, 121, 112, 101, 5, 4, 0, 19, 101, 110, 100, 112, 111, 105, 110, 116, 45, 100, 101, 115, 99, 114, 105, 112, 116, 111, 114, 3, 0, 10, 1, 112, 11, 1, 114, 2, 10, 99, 108, 97, 115, 115, 45, 99, 111, 100, 101, 125, 20, 101, 110, 100, 112, 111, 105, 110, 116, 45, 100, 101, 115, 99, 114, 105, 112, 116, 111, 114, 115, 12, 4, 0, 20, 105, 110, 116, 101, 114, 102, 97, 99, 101, 45, 100, 101, 115, 99, 114, 105, 112, 116, 111, 114, 3, 0, 13, 1, 112, 14, 1, 114, 2, 6, 110, 117, 109, 98, 101, 114, 125, 11, 100, 101, 115, 99, 114, 105, 112, 116, 111, 114, 115, 15, 4, 0, 9, 105, 110, 116, 101, 114, 102, 97, 99, 101, 3, 0, 16, 1, 107, 115, 1, 112, 17, 1, 114, 3, 4, 110, 97, 109, 101, 18, 9, 109, 97, 120, 45, 112, 111, 119, 101, 114, 123, 10, 105, 110, 116, 101, 114, 102, 97, 99, 101, 115, 19, 4, 0, 13, 99, 111, 110, 102, 105, 103, 117, 114, 97, 116, 105, 111, 110, 3, 0, 20, 1, 114, 3, 5, 109, 97, 106, 111, 114, 125, 5, 109, 105, 110, 111, 114, 125, 8, 115, 117, 98, 109, 105, 110, 111, 114, 125, 4, 0, 7, 118, 101, 114, 115, 105, 111, 110, 3, 0, 22, 1, 114, 7, 12, 100, 101, 118, 105, 99, 101, 45, 99, 108, 97, 115, 115, 125, 15, 100, 101, 118, 105, 99, 101, 45, 112, 114, 111, 116, 111, 99, 111, 108, 125, 15, 100, 101, 118, 105, 99, 101, 45, 115, 117, 98, 99, 108, 97, 115, 115, 125, 14, 100, 101, 118, 105, 99, 101, 45, 118, 101, 114, 115, 105, 111, 110, 23, 10, 112, 114, 111, 100, 117, 99, 116, 45, 105, 100, 123, 11, 117, 115, 98, 45, 118, 101, 114, 115, 105, 111, 110, 23, 9, 118, 101, 110, 100, 111, 114, 45, 105, 100, 123, 4, 0, 10, 112, 114, 111, 112, 101, 114, 116, 105, 101, 115, 3, 0, 24, 3, 1, 25, 99, 111, 109, 112, 111, 110, 101, 110, 116, 58, 117, 115, 98, 47, 116, 121, 112, 101, 115, 64, 48, 46, 49, 46, 48, 5, 0, 2, 3, 0, 0, 10, 112, 114, 111, 112, 101, 114, 116, 105, 101, 115, 2, 3, 0, 0, 13, 99, 111, 110, 102, 105, 103, 117, 114, 97, 116, 105, 111, 110, 2, 3, 0, 0, 9, 117, 115, 98, 45, 101, 114, 114, 111, 114, 1, 66, 24, 2, 3, 2, 1, 1, 4, 0, 10, 112, 114, 111, 112, 101, 114, 116, 105, 101, 115, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 13, 99, 111, 110, 102, 105, 103, 117, 114, 97, 116, 105, 111, 110, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 9, 117, 115, 98, 45, 101, 114, 114, 111, 114, 3, 0, 4, 4, 0, 10, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 3, 1, 1, 104, 6, 1, 106, 1, 115, 1, 5, 1, 64, 1, 4, 115, 101, 108, 102, 7, 0, 8, 4, 0, 27, 91, 109, 101, 116, 104, 111, 100, 93, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 46, 103, 101, 116, 45, 110, 97, 109, 101, 1, 9, 1, 64, 1, 4, 115, 101, 108, 102, 7, 0, 1, 4, 0, 29, 91, 109, 101, 116, 104, 111, 100, 93, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 46, 112, 114, 111, 112, 101, 114, 116, 105, 101, 115, 1, 10, 1, 112, 3, 1, 106, 1, 11, 1, 5, 1, 64, 1, 4, 115, 101, 108, 102, 7, 0, 12, 4, 0, 33, 91, 109, 101, 116, 104, 111, 100, 93, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 46, 99, 111, 110, 102, 105, 103, 117, 114, 97, 116, 105, 111, 110, 115, 1, 13, 1, 105, 6, 1, 112, 14, 1, 64, 0, 0, 15, 4, 0, 11, 103, 101, 116, 45, 100, 101, 118, 105, 99, 101, 115, 1, 16, 1, 112, 125, 1, 64, 1, 8, 101, 110, 100, 112, 111, 105, 110, 116, 7, 0, 17, 4, 0, 21, 116, 114, 97, 110, 115, 102, 101, 114, 45, 105, 110, 116, 101, 114, 114, 117, 112, 116, 45, 105, 110, 1, 18, 3, 1, 26, 99, 111, 109, 112, 111, 110, 101, 110, 116, 58, 117, 115, 98, 47, 100, 101, 118, 105, 99, 101, 64, 48, 46, 49, 46, 48, 5, 4, 2, 3, 0, 1, 10, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 1, 66, 7, 2, 3, 2, 1, 5, 4, 0, 10, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 3, 0, 0, 1, 105, 1, 1, 113, 4, 7, 112, 101, 110, 100, 105, 110, 103, 0, 0, 6, 99, 108, 111, 115, 101, 100, 0, 0, 9, 99, 111, 110, 110, 101, 99, 116, 101, 100, 1, 2, 0, 12, 100, 105, 115, 99, 111, 110, 110, 101, 99, 116, 101, 100, 1, 2, 0, 4, 0, 23, 100, 101, 118, 105, 99, 101, 45, 99, 111, 110, 110, 101, 99, 116, 105, 111, 110, 45, 101, 118, 101, 110, 116, 3, 0, 3, 1, 64, 0, 0, 4, 4, 0, 6, 117, 112, 100, 97, 116, 101, 1, 5, 3, 1, 26, 99, 111, 109, 112, 111, 110, 101, 110, 116, 58, 117, 115, 98, 47, 101, 118, 101, 110, 116, 115, 64, 48, 46, 49, 46, 48, 5, 6, 1, 64, 0, 1, 0, 4, 0, 3, 114, 117, 110, 1, 7, 4, 1, 39, 99, 111, 109, 112, 111, 110, 101, 110, 116, 58, 117, 115, 98, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 45, 119, 97, 115, 105, 45, 103, 117, 101, 115, 116, 47, 114, 111, 111, 116, 4, 0, 11, 10, 1, 0, 4, 114, 111, 111, 116, 3, 0, 0, 0, 70, 9, 112, 114, 111, 100, 117, 99, 101, 114, 115, 1, 12, 112, 114, 111, 99, 101, 115, 115, 101, 100, 45, 98, 121, 2, 13, 119, 105, 116, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 6, 48, 46, 50, 49, 46, 48, 16, 119, 105, 116, 45, 98, 105, 110, 100, 103, 101, 110, 45, 114, 117, 115, 116, 6, 48, 46, 49, 56, 46, 48];
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2080] = [0, 97, 115, 109, 13, 0, 1, 0, 0, 25, 22, 119, 105, 116, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 45, 101, 110, 99, 111, 100, 105, 110, 103, 4, 0, 7, 166, 15, 1, 65, 2, 1, 65, 13, 1, 66, 28, 1, 109, 1, 19, 100, 101, 118, 105, 99, 101, 45, 100, 105, 115, 99, 111, 110, 110, 101, 99, 116, 101, 100, 4, 0, 9, 117, 115, 98, 45, 101, 114, 114, 111, 114, 3, 0, 0, 1, 109, 14, 2, 105, 111, 13, 105, 110, 118, 97, 108, 105, 100, 45, 112, 97, 114, 97, 109, 6, 97, 99, 99, 101, 115, 115, 9, 110, 111, 45, 100, 101, 118, 105, 99, 101, 9, 110, 111, 116, 45, 102, 111, 117, 110, 100, 4, 98, 117, 115, 121, 7, 116, 105, 109, 101, 111, 117, 116, 8, 111, 118, 101, 114, 102, 108, 111, 119, 4, 112, 105, 112, 101, 11, 105, 110, 116, 101, 114, 114, 117, 112, 116, 101, 100, 6, 110, 111, 45, 109, 101, 109, 13, 110, 111, 116, 45, 115, 117, 112, 112, 111, 114, 116, 101, 100, 14, 98, 97, 100, 45, 100, 101, 115, 99, 114, 105, 112, 116, 111, 114, 5, 111, 116, 104, 101, 114, 4, 0, 19, 100, 101, 118, 105, 99, 101, 45, 104, 97, 110, 100, 108, 101, 45, 101, 114, 114, 111, 114, 3, 0, 2, 1, 109, 2, 2, 105, 110, 3, 111, 117, 116, 4, 0, 9, 100, 105, 114, 101, 99, 116, 105, 111, 110, 3, 0, 4, 1, 109, 4, 4, 100, 97, 116, 97, 8, 102, 101, 101, 100, 98, 97, 99, 107, 13, 102, 101, 101, 100, 98, 97, 99, 107, 45, 100, 97, 116, 97, 8, 114, 101, 115, 101, 114, 118, 101, 100, 4, 0, 10, 117, 115, 97, 103, 101, 45, 116, 121, 112, 101, 3, 0, 6, 1, 109, 4, 7, 110, 111, 45, 115, 121, 110, 99, 12, 97, 115, 121, 110, 99, 104, 114, 111, 110, 111, 117, 115, 8, 97, 100, 97, 112, 116, 105, 118, 101, 11, 115, 121, 110, 99, 104, 114, 111, 110, 111, 117, 115, 4, 0, 9, 115, 121, 110, 99, 45, 116, 121, 112, 101, 3, 0, 8, 1, 109, 4, 7, 99, 111, 110, 116, 114, 111, 108, 11, 105, 115, 111, 99, 104, 114, 111, 110, 111, 117, 115, 4, 98, 117, 108, 107, 9, 105, 110, 116, 101, 114, 114, 117, 112, 116, 4, 0, 13, 116, 114, 97, 110, 115, 102, 101, 114, 45, 116, 121, 112, 101, 3, 0, 10, 1, 114, 10, 7, 97, 100, 100, 114, 101, 115, 115, 125, 9, 100, 105, 114, 101, 99, 116, 105, 111, 110, 5, 8, 105, 110, 116, 101, 114, 118, 97, 108, 125, 15, 109, 97, 120, 45, 112, 97, 99, 107, 101, 116, 45, 115, 105, 122, 101, 123, 6, 110, 117, 109, 98, 101, 114, 125, 7, 114, 101, 102, 114, 101, 115, 104, 125, 9, 115, 121, 110, 99, 45, 116, 121, 112, 101, 9, 13, 115, 121, 110, 99, 104, 45, 97, 100, 100, 114, 101, 115, 115, 125, 13, 116, 114, 97, 110, 115, 102, 101, 114, 45, 116, 121, 112, 101, 11, 10, 117, 115, 97, 103, 101, 45, 116, 121, 112, 101, 7, 4, 0, 19, 101, 110, 100, 112, 111, 105, 110, 116, 45, 100, 101, 115, 99, 114, 105, 112, 116, 111, 114, 3, 0, 12, 1, 112, 13, 1, 114, 2, 10, 99, 108, 97, 115, 115, 45, 99, 111, 100, 101, 125, 20, 101, 110, 100, 112, 111, 105, 110, 116, 45, 100, 101, 115, 99, 114, 105, 112, 116, 111, 114, 115, 14, 4, 0, 20, 105, 110, 116, 101, 114, 102, 97, 99, 101, 45, 100, 101, 115, 99, 114, 105, 112, 116, 111, 114, 3, 0, 15, 1, 112, 16, 1, 114, 2, 6, 110, 117, 109, 98, 101, 114, 125, 11, 100, 101, 115, 99, 114, 105, 112, 116, 111, 114, 115, 17, 4, 0, 9, 105, 110, 116, 101, 114, 102, 97, 99, 101, 3, 0, 18, 1, 107, 115, 1, 112, 19, 1, 114, 4, 4, 110, 97, 109, 101, 20, 9, 109, 97, 120, 45, 112, 111, 119, 101, 114, 123, 6, 110, 117, 109, 98, 101, 114, 125, 10, 105, 110, 116, 101, 114, 102, 97, 99, 101, 115, 21, 4, 0, 13, 99, 111, 110, 102, 105, 103, 117, 114, 97, 116, 105, 111, 110, 3, 0, 22, 1, 114, 3, 5, 109, 97, 106, 111, 114, 125, 5, 109, 105, 110, 111, 114, 125, 8, 115, 117, 98, 109, 105, 110, 111, 114, 125, 4, 0, 7, 118, 101, 114, 115, 105, 111, 110, 3, 0, 24, 1, 114, 7, 12, 100, 101, 118, 105, 99, 101, 45, 99, 108, 97, 115, 115, 125, 15, 100, 101, 118, 105, 99, 101, 45, 112, 114, 111, 116, 111, 99, 111, 108, 125, 15, 100, 101, 118, 105, 99, 101, 45, 115, 117, 98, 99, 108, 97, 115, 115, 125, 14, 100, 101, 118, 105, 99, 101, 45, 118, 101, 114, 115, 105, 111, 110, 25, 10, 112, 114, 111, 100, 117, 99, 116, 45, 105, 100, 123, 11, 117, 115, 98, 45, 118, 101, 114, 115, 105, 111, 110, 25, 9, 118, 101, 110, 100, 111, 114, 45, 105, 100, 123, 4, 0, 10, 112, 114, 111, 112, 101, 114, 116, 105, 101, 115, 3, 0, 26, 3, 1, 25, 99, 111, 109, 112, 111, 110, 101, 110, 116, 58, 117, 115, 98, 47, 116, 121, 112, 101, 115, 64, 48, 46, 49, 46, 48, 5, 0, 2, 3, 0, 0, 10, 112, 114, 111, 112, 101, 114, 116, 105, 101, 115, 2, 3, 0, 0, 13, 99, 111, 110, 102, 105, 103, 117, 114, 97, 116, 105, 111, 110, 2, 3, 0, 0, 9, 117, 115, 98, 45, 101, 114, 114, 111, 114, 2, 3, 0, 0, 19, 100, 101, 118, 105, 99, 101, 45, 104, 97, 110, 100, 108, 101, 45, 101, 114, 114, 111, 114, 1, 66, 43, 2, 3, 2, 1, 1, 4, 0, 10, 112, 114, 111, 112, 101, 114, 116, 105, 101, 115, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 13, 99, 111, 110, 102, 105, 103, 117, 114, 97, 116, 105, 111, 110, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 9, 117, 115, 98, 45, 101, 114, 114, 111, 114, 3, 0, 4, 2, 3, 2, 1, 4, 4, 0, 19, 100, 101, 118, 105, 99, 101, 45, 104, 97, 110, 100, 108, 101, 45, 101, 114, 114, 111, 114, 3, 0, 6, 4, 0, 10, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 3, 1, 4, 0, 13, 100, 101, 118, 105, 99, 101, 45, 104, 97, 110, 100, 108, 101, 3, 1, 1, 104, 8, 1, 106, 1, 115, 1, 5, 1, 64, 1, 4, 115, 101, 108, 102, 10, 0, 11, 4, 0, 27, 91, 109, 101, 116, 104, 111, 100, 93, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 46, 103, 101, 116, 45, 110, 97, 109, 101, 1, 12, 1, 64, 1, 4, 115, 101, 108, 102, 10, 0, 1, 4, 0, 29, 91, 109, 101, 116, 104, 111, 100, 93, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 46, 112, 114, 111, 112, 101, 114, 116, 105, 101, 115, 1, 13, 1, 112, 3, 1, 106, 1, 14, 1, 5, 1, 64, 1, 4, 115, 101, 108, 102, 10, 0, 15, 4, 0, 33, 91, 109, 101, 116, 104, 111, 100, 93, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 46, 99, 111, 110, 102, 105, 103, 117, 114, 97, 116, 105, 111, 110, 115, 1, 16, 1, 105, 9, 1, 106, 1, 17, 1, 7, 1, 64, 1, 4, 115, 101, 108, 102, 10, 0, 18, 4, 0, 23, 91, 109, 101, 116, 104, 111, 100, 93, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 46, 111, 112, 101, 110, 1, 19, 1, 104, 9, 1, 64, 2, 4, 115, 101, 108, 102, 20, 13, 99, 111, 110, 102, 105, 103, 117, 114, 97, 116, 105, 111, 110, 125, 1, 0, 4, 0, 39, 91, 109, 101, 116, 104, 111, 100, 93, 100, 101, 118, 105, 99, 101, 45, 104, 97, 110, 100, 108, 101, 46, 115, 101, 116, 45, 99, 111, 110, 102, 105, 103, 117, 114, 97, 116, 105, 111, 110, 1, 21, 1, 64, 2, 4, 115, 101, 108, 102, 20, 9, 105, 110, 116, 101, 114, 102, 97, 99, 101, 125, 1, 0, 4, 0, 37, 91, 109, 101, 116, 104, 111, 100, 93, 100, 101, 118, 105, 99, 101, 45, 104, 97, 110, 100, 108, 101, 46, 99, 108, 97, 105, 109, 45, 105, 110, 116, 101, 114, 102, 97, 99, 101, 1, 22, 4, 0, 39, 91, 109, 101, 116, 104, 111, 100, 93, 100, 101, 118, 105, 99, 101, 45, 104, 97, 110, 100, 108, 101, 46, 117, 110, 99, 108, 97, 105, 109, 45, 105, 110, 116, 101, 114, 102, 97, 99, 101, 1, 22, 1, 112, 125, 1, 106, 1, 119, 1, 7, 1, 64, 3, 4, 115, 101, 108, 102, 20, 8, 101, 110, 100, 112, 111, 105, 110, 116, 125, 4, 100, 97, 116, 97, 23, 0, 24, 4, 0, 37, 91, 109, 101, 116, 104, 111, 100, 93, 100, 101, 118, 105, 99, 101, 45, 104, 97, 110, 100, 108, 101, 46, 119, 114, 105, 116, 101, 45, 105, 110, 116, 101, 114, 114, 117, 112, 116, 1, 25, 4, 0, 32, 91, 109, 101, 116, 104, 111, 100, 93, 100, 101, 118, 105, 99, 101, 45, 104, 97, 110, 100, 108, 101, 46, 119, 114, 105, 116, 101, 45, 98, 117, 108, 107, 1, 25, 1, 111, 2, 119, 23, 1, 106, 1, 26, 1, 7, 1, 64, 2, 4, 115, 101, 108, 102, 20, 8, 101, 110, 100, 112, 111, 105, 110, 116, 125, 0, 27, 4, 0, 31, 91, 109, 101, 116, 104, 111, 100, 93, 100, 101, 118, 105, 99, 101, 45, 104, 97, 110, 100, 108, 101, 46, 114, 101, 97, 100, 45, 98, 117, 108, 107, 1, 28, 1, 105, 8, 1, 112, 29, 1, 64, 0, 0, 30, 4, 0, 11, 103, 101, 116, 45, 100, 101, 118, 105, 99, 101, 115, 1, 31, 3, 1, 26, 99, 111, 109, 112, 111, 110, 101, 110, 116, 58, 117, 115, 98, 47, 100, 101, 118, 105, 99, 101, 64, 48, 46, 49, 46, 48, 5, 5, 2, 3, 0, 1, 10, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 1, 66, 7, 2, 3, 2, 1, 6, 4, 0, 10, 117, 115, 98, 45, 100, 101, 118, 105, 99, 101, 3, 0, 0, 1, 105, 1, 1, 113, 4, 7, 112, 101, 110, 100, 105, 110, 103, 0, 0, 6, 99, 108, 111, 115, 101, 100, 0, 0, 9, 99, 111, 110, 110, 101, 99, 116, 101, 100, 1, 2, 0, 12, 100, 105, 115, 99, 111, 110, 110, 101, 99, 116, 101, 100, 1, 2, 0, 4, 0, 23, 100, 101, 118, 105, 99, 101, 45, 99, 111, 110, 110, 101, 99, 116, 105, 111, 110, 45, 101, 118, 101, 110, 116, 3, 0, 3, 1, 64, 0, 0, 4, 4, 0, 6, 117, 112, 100, 97, 116, 101, 1, 5, 3, 1, 26, 99, 111, 109, 112, 111, 110, 101, 110, 116, 58, 117, 115, 98, 47, 101, 118, 101, 110, 116, 115, 64, 48, 46, 49, 46, 48, 5, 7, 1, 64, 0, 1, 0, 4, 0, 3, 114, 117, 110, 1, 8, 4, 1, 39, 99, 111, 109, 112, 111, 110, 101, 110, 116, 58, 117, 115, 98, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 45, 119, 97, 115, 105, 45, 103, 117, 101, 115, 116, 47, 114, 111, 111, 116, 4, 0, 11, 10, 1, 0, 4, 114, 111, 111, 116, 3, 0, 0, 0, 70, 9, 112, 114, 111, 100, 117, 99, 101, 114, 115, 1, 12, 112, 114, 111, 99, 101, 115, 115, 101, 100, 45, 98, 121, 2, 13, 119, 105, 116, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 6, 48, 46, 50, 49, 46, 48, 16, 119, 105, 116, 45, 98, 105, 110, 100, 103, 101, 110, 45, 114, 117, 115, 116, 6, 48, 46, 49, 56, 46, 48];
 
 #[inline(never)]
 #[doc(hidden)]

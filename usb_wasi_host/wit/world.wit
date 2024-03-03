@@ -6,12 +6,29 @@ interface types {
         device-disconnected
     }
 
+    enum device-handle-error {
+        io,
+        invalid-param,
+        access,
+        no-device,
+        not-found,
+        busy,
+        timeout,
+        overflow,
+        pipe,
+        interrupted,
+        no-mem,
+        not-supported,
+        bad-descriptor,
+        other
+    }
+
     enum direction { in, out }
-    
+
     enum usage-type { data, feedback, feedback-data, reserved }
-    
+
     enum sync-type { no-sync, asynchronous, adaptive, synchronous }
-    
+
     enum transfer-type { control, isochronous, bulk, interrupt }
 
     record endpoint-descriptor {
@@ -31,7 +48,7 @@ interface types {
         class-code: u8,
         endpoint-descriptors: list<endpoint-descriptor>
     }
-    
+
     record %interface {
         number: u8,
         descriptors: list<interface-descriptor>
@@ -40,6 +57,7 @@ interface types {
     record configuration {
         name: option<string>,
         max-power: u16,
+        number: u8,
         interfaces: list<%interface>
     }
 
@@ -48,7 +66,7 @@ interface types {
         minor: u8,
         subminor: u8
     }
-    
+
     record properties {
         device-class: u8,
         device-protocol: u8,
@@ -61,28 +79,38 @@ interface types {
 }
 
 interface device {
-    use types.{properties, configuration, usb-error};
+    use types.{properties, configuration, usb-error, device-handle-error};
 
     resource usb-device {
         //constructor(init: list<u8>);
         get-name: func() -> result<string, usb-error>;
         properties: func() -> properties;
         configurations: func() -> result<list<configuration>, usb-error>;
+        open: func() -> result<device-handle, device-handle-error>;
     }
-    
+
+    resource device-handle {
+        set-configuration: func(configuration: u8);
+        claim-interface: func(%interface: u8);
+        unclaim-interface: func(%interface: u8);
+        write-interrupt: func(endpoint: u8, data: list<u8>) -> result<u64, device-handle-error>;
+        write-bulk: func(endpoint: u8, data: list<u8>) -> result<u64, device-handle-error>;
+        read-bulk: func(endpoint: u8) -> result<tuple<u64, list<u8>>, device-handle-error>;
+    }
+
     get-devices: func() -> list<usb-device>;
 }
 
 interface events {
     use device.{usb-device};
-    
+
     variant device-connection-event {
         pending,
         closed,
         connected(usb-device),
         disconnected(usb-device)
     }
-    
+
     update: func() -> device-connection-event;
 }
 
