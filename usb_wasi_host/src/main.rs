@@ -12,7 +12,8 @@ use crate::bindings::UsbHost;
 
 pub mod conversion;
 pub mod device;
-pub use device::usbdevice::{MyDevice, MyDeviceHandle};
+pub use device::usbdevice::MyDevice;
+pub use device::devicehandle::MyDeviceHandle;
 mod events;
 
 pub type GlobalUsbDevice = MyDevice<rusb::Context>;
