@@ -12,27 +12,6 @@ pub struct MyDeviceHandle {
     pub handle: rusb::DeviceHandle<rusb::Context>
 }
 
-impl From<rusb::Error> for DeviceHandleError {
-    fn from(e: rusb::Error) -> Self {
-        match e {
-            rusb::Error::Io => DeviceHandleError::Io,
-            rusb::Error::InvalidParam => DeviceHandleError::InvalidParam,
-            rusb::Error::Access => DeviceHandleError::Access,
-            rusb::Error::NoDevice => DeviceHandleError::NoDevice,
-            rusb::Error::NotFound => DeviceHandleError::NotFound,
-            rusb::Error::Busy => DeviceHandleError::Busy,
-            rusb::Error::Timeout => DeviceHandleError::Timeout,
-            rusb::Error::Overflow => DeviceHandleError::Overflow,
-            rusb::Error::Pipe => DeviceHandleError::Pipe,
-            rusb::Error::Interrupted => DeviceHandleError::Interrupted,
-            rusb::Error::NoMem => DeviceHandleError::NoMem,
-            rusb::Error::NotSupported => DeviceHandleError::NotSupported,
-            rusb::Error::BadDescriptor => DeviceHandleError::BadDescriptor,
-            rusb::Error::Other => DeviceHandleError::Other,
-        }
-    }
-}
-
 #[async_trait]
 impl<T> HostDeviceHandle for T
 where

@@ -49,7 +49,6 @@ impl ServerWasiView {
 }
 
 impl WasiView for ServerWasiView {
-
     fn table(&mut self) -> &mut ResourceTable {
         &mut self.table
     }
