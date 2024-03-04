@@ -70,17 +70,22 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
             .first()
             .ok_or(Error::msg("No language to read configuration"))?;
 
-        (0..device.device_descriptor()?.num_configurations())
-            .map(|i| {
-                let config = device.config_descriptor(i)?;
-                let name = handle
-                    .read_configuration_string(*language, &config, timeout)
-                    .ok();
+        let descriptor = device.device_descriptor()?;
 
-                let interfaces = config
-                    .interfaces()
-                    .map(|interface| {
-                        let descriptors = interface
+        let mut configurations: Vec<Configuration> = Vec::with_capacity(descriptor.num_configurations().into());
+
+        for i in 0..descriptor.num_configurations() {
+            let config = device.config_descriptor(i)?;
+            let name = handle
+                .read_configuration_string(*language, &config, timeout)
+                .ok();
+
+            let interfaces = config
+                .interfaces()
+                .map(|interface| {
+                    Interface {
+                        number: interface.number(),
+                        descriptors: interface
                             .descriptors()
                             .map(|d| InterfaceDescriptor {
                                 class_code: d.class_code(),
@@ -89,25 +94,22 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
                                     .map(|ed| ed.into())
                                     .collect(),
                             })
-                            .collect();
-
-                        Interface {
-                            number: interface.number(),
-                            descriptors,
-                        }
-                    })
-                    .collect();
-
-
-
-                Ok(Configuration {
-                    name,
-                    max_power: config.max_power(),
-                    number: config.number(),
-                    interfaces,
+                            .collect()
+                    }
                 })
-            })
-            .collect()
+                .collect();
+
+            let configuration = Configuration {
+                name,
+                max_power: config.max_power(),
+                number: config.number(),
+                interfaces,
+            };
+
+            configurations.push(configuration)
+        }
+
+        Ok(configurations)
     }
 }
 
@@ -148,11 +150,13 @@ where
     }
 
     async fn open(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<Resource<MyDeviceHandle>, DeviceHandleError>> {
-        let handle = self
+        let mut handle = self
             .table()
             .get(&device)?
             .device
             .open()?;
+
+        handle.reset()?;
 
         let resource = self
             .table()

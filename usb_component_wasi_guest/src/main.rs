@@ -75,7 +75,7 @@ impl Component {
                 .find_map(|(number, v)| {
                     let interface = v.into_iter().find_map(|d| {
                         let endpoint = d.endpoint_descriptors.into_iter().find(|e| {
-                            e.direction == Direction::In && e.transfer_type == TransferType::Bulk
+                            e.direction == Direction::In && e.transfer_type == TransferType::Interrupt
                         });
 
                         endpoint
@@ -91,28 +91,39 @@ impl Component {
         if let Some((configuration_number, i_number, endpoint)) = configuration {
             println!("Opening device.");
             let handle = device.open()?;
-            handle.set_configuration(configuration_number);
-            handle.claim_interface(i_number);
-            println!(
-                "Using numbers: {:?}, {:?}, {:?}",
-                configuration_number, i_number, endpoint.number
-            );
-            let result = handle.write_bulk(
-                endpoint.number,
-                &[0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07],
-            )?;
-            println!("Wrote data {:?}", result);
-            handle.unclaim_interface(i_number);
+            // handle.set_configuration(configuration_number);
+            // handle.claim_interface(i_number);
+            // println!(
+            //     "Using numbers: {:?}, {:?}, {:?}",
+            //     configuration_number, i_number, endpoint.number
+            // );
+            // let result = handle.write_bulk(
+            //     endpoint.number,
+            //     &[0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07],
+            // )?;
+            // println!("Wrote data {:?}", result);
+            // handle.unclaim_interface(i_number);
 
             if let Some((configuration_number, i_number, endpoint)) = configuration2 {
-                handle.set_configuration(configuration_number);
-                handle.claim_interface(i_number);
+                let has_kernel_driver = match handle.kernel_driver_active(1) {
+                    Ok(true) => {
+                        handle.detach_kernel_driver(1).ok();
+                        true
+                    }
+                    _ => false,
+                };
+                println!("Has kernel driver? {:?}", has_kernel_driver);
+                handle.set_configuration(1);
+                handle.claim_interface(1);
+                handle.set_alternate_setting(1, 0)?;
+
                 println!(
-                    "Using numbers: {:?}, {:?}, {:?}",
+                    "Config: {:?}, Interface: {:?}, Endpoint: {:?}",
                     configuration_number, i_number, endpoint.number
                 );
-                let answer = handle.read_bulk(endpoint.number)?;
+                let answer = handle.read_interrupt(131)?;
                 println!("Read data {:?}", answer);
+
             }
         }
 

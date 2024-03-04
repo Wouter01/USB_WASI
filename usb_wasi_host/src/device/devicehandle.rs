@@ -84,4 +84,47 @@ where
 
         Ok(result.map(|a| (a, data)))
     }
+
+    async fn read_interrupt(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+        let mut buf = [0; 256];
+        let result = self.table()
+            .get_mut(&handle)?
+            .handle
+            .read_interrupt(endpoint, &mut buf, Duration::from_millis(10))
+            .map_err(|e| e.into())
+            .map(|a| a as u64);
+
+        Ok(result.map(|a| (a, buf.to_vec())))
+    }
+
+    async fn set_alternate_setting(&mut self, handle: Resource<MyDeviceHandle>, interface: u8, setting: u8) -> Result<Result<(), DeviceHandleError>> {
+
+        let result = self.table()
+            .get_mut(&handle)?
+            .handle
+            .set_alternate_setting(interface, setting)
+            .map_err(|e| e.into());
+
+        Ok(result)
+    }
+
+    async fn detach_kernel_driver(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<Result<(), DeviceHandleError>> {
+        let result = self.table()
+            .get_mut(&handle)?
+            .handle
+            .detach_kernel_driver(interface)
+            .map_err(|e| e.into());
+
+        Ok(result)
+    }
+
+    async fn kernel_driver_active(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<Result<bool, DeviceHandleError>> {
+        let result = self.table()
+            .get_mut(&handle)?
+            .handle
+            .kernel_driver_active(interface)
+            .map_err(|e| e.into());
+
+        Ok(result)
+    }
 }
