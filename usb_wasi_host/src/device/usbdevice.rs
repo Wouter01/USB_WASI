@@ -7,7 +7,7 @@ use wasmtime::component::Resource;
 use wasmtime_wasi::preview2::WasiView;
 
 use world::device::HostUsbDevice;
-use world::types::{Configuration, Interface, InterfaceDescriptor, Properties, UsbError, DeviceHandleError};
+use world::types::{Configuration, Interface, InterfaceDescriptor, Properties, UsbError, DeviceHandleError, DeviceFilter};
 
 use super::devicehandle::MyDeviceHandle;
 
@@ -16,6 +16,7 @@ pub struct MyDevice<T: rusb::UsbContext> {
     pub device: rusb::Device<T>,
 }
 
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(1);
 
 impl<T> MyDevice<T> where T: rusb::UsbContext {
     fn get_language(handle: &rusb::DeviceHandle<T>, timeout: Duration) -> Result<rusb::Language> {
@@ -173,9 +174,9 @@ where
 {
     async fn get_devices(&mut self) -> Result<Vec<Resource<MyDevice<rusb::Context>>>> {
         let context = rusb::Context::new();
-        let devices = context.unwrap().devices()?;
 
-        devices
+        context?
+            .devices()?
             .iter()
             .map(|device| {
                 self
@@ -184,5 +185,41 @@ where
                     .map_err(Error::from)
             })
             .collect()
+    }
+
+    async fn request_device(&mut self, filter: DeviceFilter) -> Result<Option<Resource<MyDevice<rusb::Context>>>> {
+        let context = rusb::Context::new();
+
+        let device = context?
+            .devices()?
+            .iter()
+            .find(|device| {
+                let Ok(descriptor) = device.device_descriptor() else { return false };
+
+                filter.class_code.map_or(true, |v| descriptor.class_code() == v)
+                && filter.subclass_code.map_or(true, |v| descriptor.sub_class_code() == v)
+                && filter.product_id.map_or(true, |v| descriptor.product_id() == v)
+                && filter.protocol_code.map_or(true, |v| descriptor.protocol_code() == v)
+                && filter.vendor_id.map_or(true, |v| descriptor.vendor_id() == v)
+                && filter.serial_number.as_ref().map_or(true, |v| {
+                    let Ok(device) = device.open() else { return false };
+
+                    let Ok(languages) = device.read_languages(DEFAULT_TIMEOUT) else { return false };
+                    let Some(language) = languages.first() else { return false };
+
+                    let Ok(serial_number) = device.read_serial_number_string(*language, &descriptor, DEFAULT_TIMEOUT) else { return false };
+
+                    serial_number == *v
+                })
+            });
+
+        let Some(device) = device else { return Ok(None) };
+
+        let resource = self
+            .table()
+            .push(MyDevice { device })
+            .map_err(Error::from)?;
+
+        Ok(Some(resource))
     }
 }

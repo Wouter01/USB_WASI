@@ -23,6 +23,15 @@ interface types {
         other
     }
 
+    record device-filter {
+        vendor-id: option<u16>,
+        product-id: option<u16>,
+        class-code: option<u8>,
+        subclass-code: option<u8>,
+        protocol-code: option<u8>,
+        serial-number: option<string>
+    }
+
     enum direction { in, out }
 
     enum usage-type { data, feedback, feedback-data, reserved }
@@ -79,7 +88,7 @@ interface types {
 }
 
 interface device {
-    use types.{properties, configuration, usb-error, device-handle-error};
+    use types.{properties, configuration, usb-error, device-handle-error, device-filter};
 
     resource usb-device {
         //constructor(init: list<u8>);
@@ -103,6 +112,8 @@ interface device {
     }
 
     get-devices: func() -> list<usb-device>;
+
+    request-device: func(filter: device-filter) -> option<usb-device>;
 }
 
 interface events {
