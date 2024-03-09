@@ -168,6 +168,19 @@ where
         Ok(name)
     }
 
+    async fn serial_number(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<String, DeviceHandleError>> {
+        let device = self
+            .table()
+            .get(&device)?;
+
+        let name = device.read_property(|device, handle, language| {
+            let descriptor = device.device_descriptor()?;
+            handle.read_serial_number_string(*language, &descriptor, DEFAULT_TIMEOUT)
+        });
+
+        Ok(name)
+    }
+
     async fn open(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<Resource<MyDeviceHandle>, DeviceHandleError>> {
         let mut handle = self
             .table()

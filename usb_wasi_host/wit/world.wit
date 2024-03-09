@@ -94,6 +94,7 @@ interface device {
 
         product-name: func() -> result<string, device-handle-error>;
         manufacturer-name: func() -> result<string, device-handle-error>;
+        serial-number: func() -> result<string, device-handle-error>;
 
         open: func() -> result<device-handle, device-handle-error>;
     }
