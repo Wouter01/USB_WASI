@@ -7,7 +7,7 @@ use wasmtime::component::Resource;
 use wasmtime_wasi::preview2::WasiView;
 
 use world::device::HostUsbDevice;
-use world::types::{Configuration, Interface, InterfaceDescriptor, Properties, UsbError, DeviceHandleError, DeviceFilter};
+use world::types::{Configuration, Interface, InterfaceDescriptor, Properties, DeviceHandleError, DeviceFilter};
 
 use super::devicehandle::MyDeviceHandle;
 
@@ -45,21 +45,19 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
         Ok(props)
     }
 
-    fn get_name(&self) -> Result<String> {
+    fn read_property<S>(&self, perform: impl FnOnce(&rusb::Device<T>, DeviceHandle<T>, &Language) -> Result<S, rusb::Error>) -> Result<S, DeviceHandleError> {
         let device = &self.device;
-        let d = device.device_descriptor()?;
-        let handle = device.open()?;
+        let handle = device.open().map_err(DeviceHandleError::from)?;
+        let languages = handle.read_languages(DEFAULT_TIMEOUT).map_err(DeviceHandleError::from)?;
+        let language = languages
+            .first()
+            .ok_or(DeviceHandleError::Other)?;
 
-        let timeout = Duration::from_secs(1);
-
-        let language = MyDevice::get_language(&handle, timeout)?;
-
-        let device_name = handle.read_product_string(language, &d, timeout)?;
-
-        Ok(device_name)
+        perform(device, handle, language)
+            .map_err(DeviceHandleError::from)
     }
 
-    fn get_configuration<Context: UsbContext>(&self, handle: &DeviceHandle<Context>, config: ConfigDescriptor, language: &Language) -> Result<Configuration> {
+    fn get_configuration<Context: UsbContext>(&self, handle: &DeviceHandle<Context>, config: ConfigDescriptor, language: &Language) -> Configuration {
         let name = handle
             .read_configuration_string(*language, &config, DEFAULT_TIMEOUT)
             .ok();
@@ -90,43 +88,7 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
             interfaces,
         };
 
-        Ok(configuration)
-    }
-
-    fn get_active_configuration(&self) -> Result<Configuration> {
-        let device = &self.device;
-        let handle = device.open()?;
-
-        let languages = handle.read_languages(DEFAULT_TIMEOUT)?;
-        let language = languages
-            .first()
-            .ok_or(Error::msg("No language to read configuration"))?;
-
-        let config = device.active_config_descriptor()?;
-
-        self.get_configuration(&handle, config, language)
-    }
-
-    fn get_configurations(&self) -> Result<Vec<Configuration>> {
-        let device = &self.device;
-
-        let handle = device.open()?;
-
-        let languages = handle.read_languages(DEFAULT_TIMEOUT)?;
-        let language = languages
-            .first()
-            .ok_or(Error::msg("No language to read configuration"))?;
-
-        let config_count = device.device_descriptor()?.num_configurations();
-        let mut configurations: Vec<Configuration> = Vec::with_capacity(config_count.into());
-
-        for i in 0..config_count {
-            let config = device.config_descriptor(i)?;
-            let resource = self.get_configuration(&handle, config, language)?;
-            configurations.push(resource)
-        }
-
-        Ok(configurations)
+        configuration
     }
 }
 
@@ -146,34 +108,64 @@ where
             .get_properties()
     }
 
-    async fn configurations(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<Vec<Configuration>, UsbError>> {
-        let result = self
+    async fn configurations(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<Vec<Configuration>, DeviceHandleError>> {
+        let resource = self
             .table()
-            .get(&device)?
-            .get_configurations()
-            .map_err(|_| UsbError::DeviceDisconnected);
+            .get(&device)?;
 
-        Ok(result)
+        let configs = resource.read_property(|device, handle, language| {
+            let config_count = device.device_descriptor()?.num_configurations();
+            let mut configurations: Vec<Configuration> = Vec::with_capacity(config_count.into());
+
+            for i in 0..config_count {
+                let config = device.config_descriptor(i)?;
+                let resource = resource.get_configuration(&handle, config, language);
+                configurations.push(resource)
+            }
+
+            Ok(configurations)
+        });
+
+        Ok(configs)
     }
 
-    async fn configuration(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<Configuration, UsbError>> {
-        let config = self
+    async fn configuration(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<Configuration, DeviceHandleError>> {
+        let resource = self
             .table()
-            .get(&device)?
-            .get_active_configuration()
-            .map_err(|_| UsbError::ConfigReadError);
+            .get(&device)?;
+
+        let config = resource.read_property(|device, handle, language| {
+            let config = device.active_config_descriptor()?;
+            Ok(resource.get_configuration(&handle, config, language))
+        });
 
         Ok(config)
     }
 
-    async fn get_name(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<String, UsbError>> {
-        let result = self
+    async fn product_name(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<String, DeviceHandleError>> {
+        let device = self
             .table()
-            .get(&device)?
-            .get_name()
-            .map_err(|_| UsbError::DeviceDisconnected);
+            .get(&device)?;
 
-        Ok(result)
+        let name = device.read_property(|device, handle, language| {
+            let descriptor = device.device_descriptor()?;
+            handle.read_product_string(*language, &descriptor, DEFAULT_TIMEOUT)
+        });
+
+        Ok(name)
+    }
+
+    async fn manufacturer_name(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<String, DeviceHandleError>> {
+        let device = self
+            .table()
+            .get(&device)?;
+
+        let name = device.read_property(|device, handle, language| {
+            let descriptor = device.device_descriptor()?;
+            handle.read_manufacturer_string(*language, &descriptor, DEFAULT_TIMEOUT)
+        });
+
+        Ok(name)
     }
 
     async fn open(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<Resource<MyDeviceHandle>, DeviceHandleError>> {

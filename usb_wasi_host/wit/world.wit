@@ -2,11 +2,6 @@ package component:usb@0.1.0;
 
 interface types {
 
-    enum usb-error {
-        device-disconnected,
-        config-read-error
-    }
-
     enum device-handle-error {
         io,
         invalid-param,
@@ -89,14 +84,17 @@ interface types {
 }
 
 interface device {
-    use types.{properties, configuration, usb-error, device-handle-error, device-filter};
+    use types.{properties, configuration, device-handle-error, device-filter};
 
     resource usb-device {
-        configuration: func() -> result<configuration, usb-error>;
-        //constructor(init: list<u8>);
-        get-name: func() -> result<string, usb-error>;
+        configuration: func() -> result<configuration, device-handle-error>;
+        configurations: func() -> result<list<configuration>, device-handle-error>;
+
         properties: func() -> properties;
-        configurations: func() -> result<list<configuration>, usb-error>;
+
+        product-name: func() -> result<string, device-handle-error>;
+        manufacturer-name: func() -> result<string, device-handle-error>;
+
         open: func() -> result<device-handle, device-handle-error>;
     }
 

@@ -37,7 +37,7 @@ impl Component {
             .iter()
             .map(|d| {
                 (
-                    d.get_name().unwrap_or("Could not resolve name".to_string()),
+                    d.product_name().unwrap_or("Could not resolve name".to_string()),
                     Component::get_device_config_names(d),
                 )
             })
@@ -152,7 +152,7 @@ impl Guest for Component {
             loop {
                 match update() {
                     DeviceConnectionEvent::Connected(device) => {
-                        let name = device.get_name();
+                        let name = device.product_name();
                         println!("Connected: {:?}", name);
                         // println!("Configurations: {:?}", Self::get_device_config_names(&device));
                         if let Ok(name) = name {
