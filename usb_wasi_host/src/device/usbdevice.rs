@@ -59,14 +59,60 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
         Ok(device_name)
     }
 
+    fn get_active_configuration(&self) -> Result<Configuration> {
+        let device = &self.device;
+
+        let handle = device.open()?;
+
+        let languages = handle.read_languages(DEFAULT_TIMEOUT)?;
+        let language = languages
+            .first()
+            .ok_or(Error::msg("No language to read configuration"))?;
+
+        let config = device.active_config_descriptor()?;
+
+        let name = handle
+            .read_configuration_string(*language, &config, DEFAULT_TIMEOUT)
+            .ok();
+
+        let interfaces = config
+            .interfaces()
+            .map(|interface| {
+                Interface {
+                    number: interface.number(),
+                    descriptors: interface
+                        .descriptors()
+                        .map(|d| InterfaceDescriptor {
+                            class_code: d.class_code(),
+                            endpoint_descriptors: d
+                                .endpoint_descriptors()
+                                .map(|ed| ed.into())
+                                .collect(),
+                        })
+                        .collect()
+                }
+            })
+            .collect();
+
+        let configuration = Configuration {
+            name,
+            max_power: config.max_power(),
+            number: config.number(),
+            interfaces,
+        };
+
+        Ok(configuration)
+
+    }
+
     fn get_configurations(&self) -> Result<Vec<Configuration>> {
         let device = &self.device;
 
         let handle = device.open()?;
 
-        let timeout = Duration::from_secs(1);
 
-        let languages = handle.read_languages(timeout)?;
+
+        let languages = handle.read_languages(DEFAULT_TIMEOUT)?;
         let language = languages
             .first()
             .ok_or(Error::msg("No language to read configuration"))?;
@@ -78,7 +124,7 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
         for i in 0..descriptor.num_configurations() {
             let config = device.config_descriptor(i)?;
             let name = handle
-                .read_configuration_string(*language, &config, timeout)
+                .read_configuration_string(*language, &config, DEFAULT_TIMEOUT)
                 .ok();
 
             let interfaces = config
@@ -138,6 +184,16 @@ where
             .map_err(|_| UsbError::DeviceDisconnected);
 
         Ok(result)
+    }
+
+    async fn configuration(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<Configuration, UsbError>> {
+        let config = self
+            .table()
+            .get(&device)?
+            .get_active_configuration()
+            .map_err(|_| UsbError::ConfigReadError);
+
+        Ok(config)
     }
 
     async fn get_name(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<String, UsbError>> {

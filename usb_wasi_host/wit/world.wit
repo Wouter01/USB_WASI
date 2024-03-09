@@ -3,7 +3,8 @@ package component:usb@0.1.0;
 interface types {
 
     enum usb-error {
-        device-disconnected
+        device-disconnected,
+        config-read-error
     }
 
     enum device-handle-error {
@@ -91,6 +92,7 @@ interface device {
     use types.{properties, configuration, usb-error, device-handle-error, device-filter};
 
     resource usb-device {
+        configuration: func() -> result<configuration, usb-error>;
         //constructor(init: list<u8>);
         get-name: func() -> result<string, usb-error>;
         properties: func() -> properties;
