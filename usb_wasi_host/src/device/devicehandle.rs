@@ -41,7 +41,7 @@ where
         Ok(())
     }
 
-    async fn unclaim_interface(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<()> {
+    async fn release_interface(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<()> {
         let _ = self.table()
             .get_mut(&handle)?
             .handle

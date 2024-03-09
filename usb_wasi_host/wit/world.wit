@@ -102,7 +102,7 @@ interface device {
     resource device-handle {
         select-configuration: func(configuration: u8);
         claim-interface: func(%interface: u8);
-        unclaim-interface: func(%interface: u8);
+        release-interface: func(%interface: u8);
         write-interrupt: func(endpoint: u8, data: list<u8>) -> result<u64, device-handle-error>;
         write-bulk: func(endpoint: u8, data: list<u8>) -> result<u64, device-handle-error>;
         read-bulk: func(endpoint: u8) -> result<tuple<u64, list<u8>>, device-handle-error>;
