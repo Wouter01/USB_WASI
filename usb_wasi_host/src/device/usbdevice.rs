@@ -1,7 +1,7 @@
 use crate::bindings::component::usb as world;
 use anyhow::{Error, Result};
 use async_trait::async_trait;
-use rusb::UsbContext;
+use rusb::{ConfigDescriptor, DeviceHandle, Language, UsbContext};
 use std::time::Duration;
 use wasmtime::component::Resource;
 use wasmtime_wasi::preview2::WasiView;
@@ -59,18 +59,7 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
         Ok(device_name)
     }
 
-    fn get_active_configuration(&self) -> Result<Configuration> {
-        let device = &self.device;
-
-        let handle = device.open()?;
-
-        let languages = handle.read_languages(DEFAULT_TIMEOUT)?;
-        let language = languages
-            .first()
-            .ok_or(Error::msg("No language to read configuration"))?;
-
-        let config = device.active_config_descriptor()?;
-
+    fn get_configuration<Context: UsbContext>(&self, handle: &DeviceHandle<Context>, config: ConfigDescriptor, language: &Language) -> Result<Configuration> {
         let name = handle
             .read_configuration_string(*language, &config, DEFAULT_TIMEOUT)
             .ok();
@@ -102,7 +91,20 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
         };
 
         Ok(configuration)
+    }
 
+    fn get_active_configuration(&self) -> Result<Configuration> {
+        let device = &self.device;
+        let handle = device.open()?;
+
+        let languages = handle.read_languages(DEFAULT_TIMEOUT)?;
+        let language = languages
+            .first()
+            .ok_or(Error::msg("No language to read configuration"))?;
+
+        let config = device.active_config_descriptor()?;
+
+        self.get_configuration(&handle, config, language)
     }
 
     fn get_configurations(&self) -> Result<Vec<Configuration>> {
@@ -110,50 +112,18 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
 
         let handle = device.open()?;
 
-
-
         let languages = handle.read_languages(DEFAULT_TIMEOUT)?;
         let language = languages
             .first()
             .ok_or(Error::msg("No language to read configuration"))?;
 
-        let descriptor = device.device_descriptor()?;
+        let config_count = device.device_descriptor()?.num_configurations();
+        let mut configurations: Vec<Configuration> = Vec::with_capacity(config_count.into());
 
-        let mut configurations: Vec<Configuration> = Vec::with_capacity(descriptor.num_configurations().into());
-
-        for i in 0..descriptor.num_configurations() {
+        for i in 0..config_count {
             let config = device.config_descriptor(i)?;
-            let name = handle
-                .read_configuration_string(*language, &config, DEFAULT_TIMEOUT)
-                .ok();
-
-            let interfaces = config
-                .interfaces()
-                .map(|interface| {
-                    Interface {
-                        number: interface.number(),
-                        descriptors: interface
-                            .descriptors()
-                            .map(|d| InterfaceDescriptor {
-                                class_code: d.class_code(),
-                                endpoint_descriptors: d
-                                    .endpoint_descriptors()
-                                    .map(|ed| ed.into())
-                                    .collect(),
-                            })
-                            .collect()
-                    }
-                })
-                .collect();
-
-            let configuration = Configuration {
-                name,
-                max_power: config.max_power(),
-                number: config.number(),
-                interfaces,
-            };
-
-            configurations.push(configuration)
+            let resource = self.get_configuration(&handle, config, language)?;
+            configurations.push(resource)
         }
 
         Ok(configurations)
