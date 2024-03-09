@@ -21,7 +21,7 @@ where
         Ok(self.table().delete(rep).map(|_| ())?)
     }
 
-    async fn set_configuration(&mut self, handle: Resource<MyDeviceHandle>, configuration: u8) -> Result<()> {
+    async fn select_configuration(&mut self, handle: Resource<MyDeviceHandle>, configuration: u8) -> Result<()> {
         let _ = self.table()
             .get_mut(&handle)?
             .handle
@@ -97,7 +97,7 @@ where
         Ok(result.map(|a| (a, buf.to_vec())))
     }
 
-    async fn set_alternate_setting(&mut self, handle: Resource<MyDeviceHandle>, interface: u8, setting: u8) -> Result<Result<(), DeviceHandleError>> {
+    async fn select_alternate_interface(&mut self, handle: Resource<MyDeviceHandle>, interface: u8, setting: u8) -> Result<Result<(), DeviceHandleError>> {
 
         let result = self.table()
             .get_mut(&handle)?

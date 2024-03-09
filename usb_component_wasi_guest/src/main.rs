@@ -113,9 +113,9 @@ impl Component {
                     _ => false,
                 };
                 println!("Has kernel driver? {:?}", has_kernel_driver);
-                handle.set_configuration(1);
+                handle.select_configuration(1);
                 handle.claim_interface(1);
-                handle.set_alternate_setting(1, 0)?;
+                handle.select_alternate_interface(1, 0)?;
 
                 println!(
                     "Config: {:?}, Interface: {:?}, Endpoint: {:?}",
