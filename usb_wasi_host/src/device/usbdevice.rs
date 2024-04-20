@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use rusb::{ConfigDescriptor, DeviceHandle, Language, UsbContext};
 use std::time::Duration;
 use wasmtime::component::Resource;
-use wasmtime_wasi::preview2::WasiView;
+use wasmtime_wasi::WasiView;
 
 use world::device::HostUsbDevice;
 use world::types::{Configuration, Interface, InterfaceDescriptor, Properties, DeviceHandleError, DeviceFilter};

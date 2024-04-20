@@ -2,8 +2,9 @@ use anyhow::Result;
 use clap::Parser;
 use tokio::sync::mpsc::error::TryRecvError;
 use std::path::PathBuf;
+use std::process::exit;
 use wasmtime::{component::*, Config, Engine, Store};
-use wasmtime_wasi::preview2::{command, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::{command, WasiCtx, WasiCtxBuilder, WasiView};
 use async_trait::async_trait;
 
 use bindings::component::usb::events::{Host as EventsHost, DeviceConnectionEvent as WasmDeviceConnectionEvent};
