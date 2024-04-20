@@ -51,6 +51,8 @@ interface types {
 
     record interface-descriptor {
         class-code: u8,
+        setting: u8,
+        number: u8,
         endpoint-descriptors: list<endpoint-descriptor>
     }
 

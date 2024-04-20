@@ -16,7 +16,7 @@ pub struct MyDevice<T: rusb::UsbContext> {
     pub device: rusb::Device<T>,
 }
 
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(1);
+pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 
 impl<T> MyDevice<T> where T: rusb::UsbContext {
     fn get_language(handle: &rusb::DeviceHandle<T>, timeout: Duration) -> Result<rusb::Language> {
@@ -71,6 +71,8 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
                         .descriptors()
                         .map(|d| InterfaceDescriptor {
                             class_code: d.class_code(),
+                            setting: d.setting_number(),
+                            number: d.interface_number(),
                             endpoint_descriptors: d
                                 .endpoint_descriptors()
                                 .map(|ed| ed.into())
@@ -189,6 +191,7 @@ where
             .open()?;
 
         handle.reset()?;
+        _ = handle.set_auto_detach_kernel_driver(true);
 
         let resource = self
             .table()

@@ -12,6 +12,8 @@ pub struct MyDeviceHandle {
     pub handle: rusb::DeviceHandle<rusb::Context>
 }
 
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
+
 #[async_trait]
 impl<T> HostDeviceHandle for T
 where
@@ -55,7 +57,7 @@ where
         let result = self.table()
             .get_mut(&handle)?
             .handle
-            .write_interrupt(endpoint, &data, Duration::from_millis(10000))
+            .write_interrupt(endpoint, &data, DEFAULT_TIMEOUT)
             .map_err(|e| e.into())
             .map(|a| a as u64);
 
@@ -66,7 +68,7 @@ where
         let result = self.table()
             .get_mut(&handle)?
             .handle
-            .write_bulk(endpoint, &data, Duration::from_millis(10000))
+            .write_bulk(endpoint, &data, DEFAULT_TIMEOUT)
             .map_err(|e| e.into())
             .map(|a| a as u64);
 
@@ -78,7 +80,7 @@ where
         let result = self.table()
             .get_mut(&handle)?
             .handle
-            .read_bulk(endpoint, &mut data, Duration::from_millis(10))
+            .read_bulk(endpoint, &mut data, DEFAULT_TIMEOUT)
             .map_err(|e| e.into())
             .map(|a| a as u64);
 
@@ -90,7 +92,7 @@ where
         let result = self.table()
             .get_mut(&handle)?
             .handle
-            .read_interrupt(endpoint, &mut buf, Duration::from_millis(10))
+            .read_interrupt(endpoint, &mut buf, DEFAULT_TIMEOUT)
             .map_err(|e| e.into())
             .map(|a| a as u64);
 
