@@ -87,7 +87,7 @@ impl Component {
             descriptors.map((|(n, interface)| (c.number, n, interface)))
         });
 
-        println!("{:?}", configuration);
+        println!("{:#?}", configuration);
         if let Some((configuration_number, i_number, endpoint)) = configuration {
             println!("Opening device.");
             let handle = device.open()?;
@@ -118,10 +118,10 @@ impl Component {
                 handle.select_alternate_interface(1, 0)?;
 
                 println!(
-                    "Config: {:?}, Interface: {:?}, Endpoint: {:?}",
-                    configuration_number, i_number, endpoint.number
+                    "Config: {:?}, Interface: {:?}, Endpoint: {:?}, Endpoint Address: {:?}",
+                    configuration_number, i_number, endpoint.number, endpoint.address
                 );
-                let answer = handle.read_interrupt(131)?;
+                let answer = handle.read_interrupt(endpoint.address)?;
                 println!("Read data {:?}", answer);
 
             }
@@ -157,7 +157,7 @@ impl Guest for Component {
                         // println!("Configurations: {:?}", Self::get_device_config_names(&device));
                         if let Ok(name) = name {
                             if name.contains("Arduino") {
-                                println!("{:?}", device.configurations());
+                                println!("{:#?}", device.configurations());
                                 loop {
                                     match Self::send_data(&device) {
                                         Err(e) => println!("Error sending data: {:?}", e),

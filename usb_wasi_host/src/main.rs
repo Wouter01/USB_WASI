@@ -127,14 +127,15 @@ impl UsbDemoApp {
     }
 }
 
-async fn start_guest(runner: &mut Runner) -> Result<()> {
+async fn start_guest(runner: &mut Runner) -> anyhow::Result<Result<(), String>> {
     let data = ServerWasiView::new()?;
     let mut store = Store::new(&runner.engine, data);
 
     let instance = &runner.linker.instantiate_async(&mut store, &runner.component).await?;
-    let run = instance.get_typed_func::<(), ()>(&mut store, "run").unwrap();
 
-    run.call_async(&mut store, ()).await
+    let run = instance.get_typed_func::<(), (Result<(), String>,)>(&mut store, "run").unwrap();
+
+    run.call_async(&mut store, ()).await.map(|result| result.0)
 }
 
 #[tokio::main]
@@ -144,7 +145,9 @@ async fn main() -> Result<()> {
     let mut app = UsbDemoApp::create(parsed.component).await?;
     let runner = &mut app.runner;
 
-    let result = start_guest(runner).await;
+    let result = start_guest(runner)
+        .await
+        .expect("Could not start component");
 
     println!("{:?}", result);
 

@@ -1,7 +1,7 @@
 [workspace]
 members = [
-	# "usb_component_wasi",
 	"usb_component_wasi_guest",
+	"usb_component_wasi_stadia",
 	"usb_wasi_host"
 ]
 
