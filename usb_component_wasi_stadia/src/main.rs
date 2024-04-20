@@ -1,11 +1,13 @@
 mod bindings;
 
+use std::{ thread::sleep, time::Duration};
+
 use anyhow::Result;
-use bindings::component::usb::types::{Direction, TransferType};
+use bindings::component::usb::{events::update, types::{Direction, TransferType}};
 use bitflags::bitflags;
 
 use crate::bindings::{
-    component::usb::device::get_devices,
+    component::usb::{device::{get_devices, UsbDevice}, events::DeviceConnectionEvent},
     Guest,
 };
 
@@ -14,16 +16,25 @@ struct Component;
 impl Guest for Component {
     #[tokio::main(flavor = "current_thread")]
     async fn run() -> Result<(), String> {
-        let devices = get_devices();
-
-        let stadia_device = devices
-            .iter()
-            .find(|device| {
-                let props = device.properties();
-                props.product_id == 0x9400 && props.vendor_id == 0x18d1
-            })
-            // .find(|device| device. .product_name().map(|name| name == "Stadia Controller rev. A").unwrap_or(false))
-            .ok_or("Could not find stadia controller")?;
+        let stadia_device: UsbDevice;
+        loop {
+            match update() {
+                DeviceConnectionEvent::Pending => {
+                    sleep(Duration::from_secs(1));
+                },
+                DeviceConnectionEvent::Closed => return Err("No further device updates.".to_string()),
+                DeviceConnectionEvent::Connected(device) => {
+                    let props = device.properties();
+                    let is_stadia = props.product_id == 0x9400 && props.vendor_id == 0x18d1;
+                    if is_stadia {
+                        println!("Found Stadia Controller");
+                        stadia_device = device;
+                        break;
+                    }
+                },
+                DeviceConnectionEvent::Disconnected(_) => continue,
+            }
+        }
 
         let configurations = stadia_device
             .configurations()
