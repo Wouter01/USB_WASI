@@ -1,13 +1,14 @@
 mod bindings;
 
-use std::{ thread::sleep, time::Duration};
+use std::time::Duration;
 
 use anyhow::Result;
-use bindings::component::usb::{events::update, types::{Direction, TransferType}};
+use bindings::component::usb::{device::DeviceHandle, events::update, types::{Direction, TransferType}};
 use bitflags::bitflags;
+use tokio::{task::AbortHandle, time::sleep};
 
 use crate::bindings::{
-    component::usb::{device::{get_devices, UsbDevice}, events::DeviceConnectionEvent},
+    component::usb::{device::UsbDevice, events::DeviceConnectionEvent},
     Guest,
 };
 
@@ -16,27 +17,49 @@ struct Component;
 impl Guest for Component {
     #[tokio::main(flavor = "current_thread")]
     async fn run() -> Result<(), String> {
-        let stadia_device: UsbDevice;
+
+        let mut process_task_aborthandle: Option<AbortHandle> = None;
+
         loop {
             match update() {
-                DeviceConnectionEvent::Pending => {
-                    sleep(Duration::from_secs(1));
-                },
+                DeviceConnectionEvent::Pending => sleep(Duration::from_secs(1)).await,
                 DeviceConnectionEvent::Closed => return Err("No further device updates.".to_string()),
-                DeviceConnectionEvent::Connected(device) => {
-                    let props = device.properties();
-                    let is_stadia = props.product_id == 0x9400 && props.vendor_id == 0x18d1;
-                    if is_stadia {
-                        println!("Found Stadia Controller");
-                        stadia_device = device;
-                        break;
+                DeviceConnectionEvent::Connected(device) if device.is_stadia_device() => {
+                    println!("Found Stadia Controller");
+
+                    let (handle, endpoint_address) = Self::setup_handle(device)?;
+                    let task = tokio::spawn(async move {
+                        Self::process_input_task(handle, endpoint_address).await
+                    });
+                    if let Some(handle) = process_task_aborthandle {
+                        handle.abort();
+                    }
+
+                    process_task_aborthandle = Some(task.abort_handle());
+                },
+                DeviceConnectionEvent::Disconnected(device) if device.is_stadia_device() => {
+                    if let Some(handle) = process_task_aborthandle {
+                        handle.abort();
+                        println!("Device disconnected, stop watching.");
+                        process_task_aborthandle = None;
                     }
                 },
-                DeviceConnectionEvent::Disconnected(_) => continue,
+                _ => continue
             }
         }
+    }
+}
 
-        let configurations = stadia_device
+impl UsbDevice {
+    fn is_stadia_device(&self) -> bool {
+        let props = self.properties();
+        props.product_id == 0x9400 && props.vendor_id == 0x18d1
+    }
+}
+
+impl Component {
+    fn setup_handle(device: UsbDevice) -> Result<(DeviceHandle, u8), String> {
+        let configurations = device
             .configurations()
             .map_err(|e| e.message())?;
 
@@ -61,7 +84,7 @@ impl Guest for Component {
             .find(|e| e.direction == Direction::In && e.transfer_type == TransferType::Interrupt)
             .ok_or("No endpoint in interface with direction IN and transfer type Interrupt")?;
 
-        let handle = stadia_device
+        let handle = device
             .open()
             .map_err(|e| e.message())?;
 
@@ -69,17 +92,24 @@ impl Guest for Component {
         handle.claim_interface(interface_descriptor.number);
 
         println!("Connected to controller");
+
+        Ok((handle, endpoint.address))
+    }
+
+    async fn process_input_task(handle: DeviceHandle, endpoint_address: u8) {
         println!("Waiting for controller input...");
 
         loop {
             let data = handle
-                .read_interrupt(endpoint.address)
+                .read_interrupt(endpoint_address)
                 .map_err(|e| e.to_string());
 
             if let Ok(data) = data {
                 let stadia_state = StadiaState::new(data.1);
                 println!("{:?}", stadia_state);
             }
+
+            tokio::task::yield_now().await;
         }
     }
 }
