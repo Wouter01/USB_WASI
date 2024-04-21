@@ -29,9 +29,9 @@ impl Guest for Component {
                 DeviceConnectionEvent::Connected(device) if device.is_stadia_device() => {
                     println!("Found Stadia Controller");
 
-                    let (handle, endpoint_address) = Self::setup_handle(device)?;
+                    let (handle, endpoint_address, endpoint_out_address) = Self::setup_handle(device)?;
                     let task = tokio::spawn(async move {
-                        Self::process_input_task(handle, endpoint_address).await
+                        Self::process_input_task(handle, endpoint_address, endpoint_out_address).await
                     });
                     if let Some(handle) = process_task_aborthandle {
                         handle.abort();
@@ -60,7 +60,7 @@ impl UsbDevice {
 }
 
 impl Component {
-    fn setup_handle(device: UsbDevice) -> Result<(DeviceHandle, u8), String> {
+    fn setup_handle(device: UsbDevice) -> Result<(DeviceHandle, u8, u8), String> {
         let configurations = device
             .configurations()
             .map_err(|e| e.message())?;
@@ -86,6 +86,12 @@ impl Component {
             .find(|e| e.direction == Direction::In && e.transfer_type == TransferType::Interrupt)
             .ok_or("No endpoint in interface with direction IN and transfer type Interrupt")?;
 
+        let endpoint_out = interface_descriptor
+            .endpoint_descriptors
+            .iter()
+            .find(|e| e.direction == Direction::Out && e.transfer_type == TransferType::Interrupt)
+            .ok_or("No endpoint in interface with direction OUT and transfer type Interrupt")?;
+
         let handle = device
             .open()
             .map_err(|e| e.message())?;
@@ -95,13 +101,14 @@ impl Component {
 
         println!("Connected to controller");
 
-        Ok((handle, endpoint.address))
+        Ok((handle, endpoint.address, endpoint_out.address))
     }
 
-    async fn process_input_task(handle: DeviceHandle, endpoint_address: u8) {
+    async fn process_input_task(handle: DeviceHandle, endpoint_address: u8, endpoint_out_address: u8) {
         println!("Waiting for controller input...");
 
         loop {
+            // Read state of controller.
             let data = handle
                 .read_interrupt(endpoint_address)
                 .map_err(|e| e.to_string());
@@ -109,6 +116,12 @@ impl Component {
             if let Ok(data) = data {
                 let stadia_state = StadiaState::new(data.1);
                 println!("{:?}", stadia_state);
+
+                // Let controller vibrate at intensity of pressure of shoulder trigger.
+                // When a shoulder trigger is pushed harder, the controller will rumble harder at that side.
+                // Info about rumble data: https://github.com/FIX94/Nintendont/issues/1080
+                let rumble_data: [u8; 5] = [0x05, stadia_state.l2_position, stadia_state.l2_position, stadia_state.r2_position, stadia_state.r2_position];
+                _ = handle.write_interrupt(endpoint_out_address, &rumble_data);
             }
 
             tokio::task::yield_now().await;
