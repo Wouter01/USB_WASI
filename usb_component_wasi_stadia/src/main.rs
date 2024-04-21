@@ -20,6 +20,8 @@ impl Guest for Component {
 
         let mut process_task_aborthandle: Option<AbortHandle> = None;
 
+        println!("Waiting for Stadia controller...");
+
         loop {
             match update() {
                 DeviceConnectionEvent::Pending => sleep(Duration::from_secs(1)).await,
