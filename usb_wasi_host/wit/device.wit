@@ -25,8 +25,11 @@ interface device {
 
         write-interrupt: func(endpoint: u8, data: list<u8>) -> result<u64, device-handle-error>;
         write-bulk: func(endpoint: u8, data: list<u8>) -> result<u64, device-handle-error>;
-        read-bulk: func(endpoint: u8) -> result<tuple<u64, list<u8>>, device-handle-error>;
+        write-control: func(request-type: u8, request: u8, value: u16, index: u16, buf: list<u8>) -> result<u64, device-handle-error>;
+
+        read-bulk: func(endpoint: u8, max-size: u16) -> result<tuple<u64, list<u8>>, device-handle-error>;
         read-interrupt: func(endpoint: u8) -> result<tuple<u64, list<u8>>, device-handle-error>;
+
 
         detach-kernel-driver: func(%interface: u8) -> result<_, device-handle-error>;
         kernel-driver-active: func(%interface: u8) -> result<bool, device-handle-error>;

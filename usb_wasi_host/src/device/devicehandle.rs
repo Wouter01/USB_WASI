@@ -75,16 +75,27 @@ where
         Ok(result)
     }
 
-    async fn read_bulk(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
-        let mut data = Vec::new();
+    async fn write_control(&mut self, handle: Resource<MyDeviceHandle>, request_type: u8, request: u8, value: u16, index: u16, buf: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
         let result = self.table()
             .get_mut(&handle)?
             .handle
-            .read_bulk(endpoint, &mut data, DEFAULT_TIMEOUT)
+            .write_control(request_type, request, value, index, &buf, DEFAULT_TIMEOUT)
             .map_err(|e| e.into())
             .map(|a| a as u64);
 
-        Ok(result.map(|a| (a, data)))
+        Ok(result)
+    }
+
+    async fn read_bulk(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8, max_size: u16) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+        let mut buffer: Vec<u8> = vec![0; max_size as usize];
+        let result = self.table()
+            .get_mut(&handle)?
+            .handle
+            .read_bulk(endpoint, &mut buffer, DEFAULT_TIMEOUT)
+            .map_err(|e| e.into())
+            .map(|a| a as u64);
+
+        Ok(result.map(|a| (a, buffer)))
     }
 
     async fn read_interrupt(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
