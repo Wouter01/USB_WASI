@@ -5,7 +5,8 @@ members = [
 	"usb_component_wasi_arduino",
 	"usb_wasi_host",
 	"examples/usb_stadia_native",
-	"examples/usb_arduino_native"
+	"examples/usb_arduino_native",
+	"examples/usb_mass_storage_native"
 ]
 
 exclude = [
