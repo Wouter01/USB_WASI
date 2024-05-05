@@ -1,12 +1,14 @@
 use anyhow::Result;
+use cap_std::fs::Dir;
 use clap::Parser;
 use tokio::sync::mpsc::error::TryRecvError;
-use std::path::PathBuf;
+use std::borrow::Borrow;
+use std::fs::File;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 use wasmtime::{component::*, Config, Engine, Store};
-use wasmtime_wasi::{command, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::{command, DirPerms, FilePerms, WasiCtx, WasiCtxBuilder, WasiView};
 use async_trait::async_trait;
-
 use bindings::component::usb::events::{Host as EventsHost, DeviceConnectionEvent as WasmDeviceConnectionEvent};
 
 use crate::bindings::UsbHost;
@@ -43,7 +45,12 @@ struct ServerWasiView {
 impl ServerWasiView {
     fn new() -> Result<Self> {
         let table = ResourceTable::new();
-        let ctx = WasiCtxBuilder::new().inherit_stdio().build();
+
+        let file = File::open(Path::new("."))?;
+        let ctx = WasiCtxBuilder::new()
+            .inherit_stdio()
+            .preopened_dir(Dir::from_std_file(file), DirPerms::all(), FilePerms::all(), ".")
+            .build();
         let (receiver, registration, task) = events::device_connection_updates()?;
         Ok(Self { table, ctx, updates: receiver, registration, task })
     }
@@ -152,6 +159,8 @@ async fn main() -> Result<()> {
     println!("{:?}", result);
 
     println!("Guest Ended");
+
+    exit(0);
 
     Ok(())
 }

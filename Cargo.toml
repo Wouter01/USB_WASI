@@ -2,10 +2,16 @@
 members = [
 	"usb_component_wasi_guest",
 	"usb_component_wasi_stadia",
-	"usb_wasi_host"
+	"usb_component_wasi_arduino",
+	"usb_wasi_host",
+	"examples/usb_stadia_native",
+	"examples/usb_arduino_native"
 ]
 
 exclude = [
 	"usb_component_wasi"
 ]
 resolver = "2"
+
+# [profile.release]
+# debug = true
