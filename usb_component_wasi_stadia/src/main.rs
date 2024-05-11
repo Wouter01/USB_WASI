@@ -31,7 +31,7 @@ impl Guest for Component {
 
                     let (handle, endpoint_address, endpoint_out_address) = Self::setup_handle(device)?;
                     let task = tokio::spawn(async move {
-                        Self::process_input_task_write_to_controller(handle, endpoint_address, endpoint_out_address).await
+                        Self::process_input_task_read_controller_state(handle, endpoint_address, endpoint_out_address).await
                         // Self::process_input_task(handle, endpoint_address, endpoint_out_address).await
                     });
                     if let Some(handle) = process_task_aborthandle {
