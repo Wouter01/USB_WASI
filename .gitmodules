@@ -1,0 +1,3 @@
+[submodule "WIT"]
+	path = WIT
+	url = https://Wouter01@github.com/WebAssembly/wasi-usb
