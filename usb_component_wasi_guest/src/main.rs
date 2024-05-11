@@ -121,7 +121,11 @@ impl Component {
                     "Config: {:?}, Interface: {:?}, Endpoint: {:?}, Endpoint Address: {:?}",
                     configuration_number, i_number, endpoint.number, endpoint.address
                 );
-                let answer = handle.read_interrupt(endpoint.address)?;
+                let data: Vec<u8> = vec![1,2,3];
+                let bytes_written = handle.write_interrupt(131, data.as_slice())?;
+                println!("Wrote data {:?}", bytes_written);
+
+                let answer = handle.read_interrupt(131);
                 println!("Read data {:?}", answer);
 
             }
@@ -145,7 +149,7 @@ impl Component {
 
 impl Guest for Component {
     #[tokio::main(flavor = "current_thread")]
-    async fn run() {
+    async fn run() -> Result<(), String> {
         println!("Device names: {:#?}", Component::get_all_device_names());
 
         tokio::spawn(async {
@@ -188,6 +192,8 @@ impl Guest for Component {
         });
 
         sleep(std::time::Duration::from_secs(120)).await;
+
+        Ok(())
     }
 }
 

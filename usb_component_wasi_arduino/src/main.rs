@@ -1,6 +1,6 @@
 mod bindings;
 
-use std::{fs::File, time::{Duration, Instant}};
+use std::{fs::File, io::Read, thread::sleep, time::{Duration, Instant}};
 use std::io::{self, Write};
 
 use anyhow::Result;
@@ -74,18 +74,19 @@ impl Guest for Component {
         println!("Connected to controller");
 
         let max_packet_size = endpoint_in.max_packet_size;
+        dbg!(max_packet_size);
         let mut buffer: Vec<u8> = vec![0; max_packet_size as usize];
 
         let mut times: Vec<Duration> = vec![];
 
         // Warm up
         println!("Warming up...");
-        for _ in 0..10000 {
-            let (bytes_written, data) = handle.read_bulk(endpoint_in.address, max_packet_size)
-                .map_err(|e| e.to_string())?;
-        }
+        // for _ in 0..10000 {
+        //     let (bytes_written, data) = handle.read_bulk(endpoint_in.address, max_packet_size)
+        //         .map_err(|e| e.to_string())?;
+        // }
 
-        const RUNS: u8 = 100;
+        const RUNS: u8 = 5;
         let mut data: Vec<Duration> = Vec::with_capacity(RUNS as usize * 10000 as usize);
 
         for i in 0..RUNS {
@@ -93,9 +94,16 @@ impl Guest for Component {
             let now = Instant::now();
             for _ in 0..10000 {
                 let one_measure = Instant::now();
-                let (bytes_written, _) = handle.read_bulk(endpoint_in.address, max_packet_size)
+                let (bytes_written, data2) = handle.read_bulk(endpoint_in.address, max_packet_size)
                     .map_err(|e| e.to_string())?;
-                data.push(one_measure.elapsed());
+                let elapsed = one_measure.elapsed();
+                let cutted = &data2[0..(bytes_written as _)];
+                let str = String::from_utf8(cutted.to_vec());
+
+                // println!("{} {:?} {:?}", bytes_written, elapsed, 0);
+                // dbg!(bytes_written, elapsed);
+                data.push(elapsed);
+                sleep(Duration::from_millis(2));
             }
             times.push(now.elapsed());
         }

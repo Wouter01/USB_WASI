@@ -1,6 +1,6 @@
 mod bindings;
 
-use std::time::Duration;
+use std::{num::Wrapping, time::{Duration, Instant}};
 
 use anyhow::Result;
 use bindings::component::usb::{device::DeviceHandle, events::update, types::{Direction, TransferType}};
@@ -31,7 +31,8 @@ impl Guest for Component {
 
                     let (handle, endpoint_address, endpoint_out_address) = Self::setup_handle(device)?;
                     let task = tokio::spawn(async move {
-                        Self::process_input_task(handle, endpoint_address, endpoint_out_address).await
+                        Self::process_input_task_write_to_controller(handle, endpoint_address, endpoint_out_address).await
+                        // Self::process_input_task(handle, endpoint_address, endpoint_out_address).await
                     });
                     if let Some(handle) = process_task_aborthandle {
                         handle.abort();
@@ -104,14 +105,39 @@ impl Component {
         Ok((handle, endpoint.address, endpoint_out.address))
     }
 
-    async fn process_input_task(handle: DeviceHandle, endpoint_address: u8, endpoint_out_address: u8) {
+    /// Repeatedly set the rumble intensity of the controller from 0 to 255.
+    async fn process_input_task_write_to_controller(handle: DeviceHandle, endpoint_out_address: u8) {
+        println!("Sending rumble data to controller...");
+
+        let mut intensity = Wrapping(0u8);
+        let now = Instant::now();
+
+        for _ in 0..10000 {
+            intensity += 1;
+            let num = intensity.0;
+
+            let rumble_data: [u8; 5] = [0x05, num, num, num, num];
+            _ = handle.write_interrupt(endpoint_out_address, &rumble_data);
+        }
+
+        let elapsed_time = now.elapsed();
+        println!("Writing data took {} milliseconds.", elapsed_time.as_millis());
+    }
+
+    /// Read and print out the controller state and react to updates.
+    /// Set the rumble intensity based on the pressure on the shoulder triggers.
+    async fn process_input_task_read_controller_state(handle: DeviceHandle, endpoint_address: u8, endpoint_out_address: u8) {
         println!("Waiting for controller input...");
 
         loop {
+            let now = Instant::now();
             // Read state of controller.
             let data = handle
                 .read_interrupt(endpoint_address)
                 .map_err(|e| e.to_string());
+
+            let elapsed_time = now.elapsed();
+            println!("Reading state took {} milliseconds.", elapsed_time.as_millis());
 
             if let Ok(data) = data {
                 let stadia_state = StadiaState::new(data.1);
