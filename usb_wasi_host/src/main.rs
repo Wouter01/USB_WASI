@@ -2,16 +2,13 @@ use anyhow::Result;
 use cap_std::fs::Dir;
 use clap::Parser;
 use tokio::sync::mpsc::error::TryRecvError;
-use std::borrow::Borrow;
-use std::fs::File;
-use std::path::{Path, PathBuf};
-use std::process::exit;
+use std::{fs::File, path::{Path, PathBuf}, process::exit};
 use wasmtime::{component::*, Config, Engine, Store};
 use wasmtime_wasi::{command, DirPerms, FilePerms, WasiCtx, WasiCtxBuilder, WasiView};
 use async_trait::async_trait;
 use bindings::component::usb::events::{Host as EventsHost, DeviceConnectionEvent as WasmDeviceConnectionEvent};
 
-use crate::bindings::UsbHost;
+use crate::bindings::Imports as UsbHost;
 
 pub mod conversion;
 pub mod device;
@@ -24,12 +21,13 @@ pub type GlobalDeviceHandle = MyDeviceHandle;
 
 pub mod bindings {
     wasmtime::component::bindgen!({
-        world: "component:usb/usb-host",
+        world: "component:usb/imports",
         async: true,
         with: {
-            "component:usb/device/usb-device": super::GlobalUsbDevice,
-            "component:usb/device/device-handle": super::GlobalDeviceHandle,
-        }
+            "component:usb/usb/usb-device": super::GlobalUsbDevice,
+            "component:usb/usb/device-handle": super::GlobalDeviceHandle,
+        },
+        path: "../WIT/wit"
     });
 }
 
@@ -66,6 +64,8 @@ impl WasiView for ServerWasiView {
     }
 }
 
+impl bindings::component::usb::usb::Host for ServerWasiView {}
+impl bindings::component::usb::descriptors::Host for ServerWasiView {}
 impl bindings::component::usb::types::Host for ServerWasiView {}
 
 #[async_trait]

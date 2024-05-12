@@ -1,6 +1,6 @@
-use crate::bindings::component::usb::types::{
-    DeviceHandleError, Direction, EndpointDescriptor, SyncType, TransferType, UsageType, Version
-};
+use crate::bindings::component::usb::{descriptors::{EndpointDescriptor, DeviceDescriptor}, types::{
+    DeviceHandleError, Direction, SyncType, TransferType, UsageType, Version
+}};
 
 impl From<rusb::Version> for Version {
     fn from(a: rusb::Version) -> Self {
@@ -67,6 +67,25 @@ impl From<rusb::EndpointDescriptor<'_>> for EndpointDescriptor {
             synch_address: ed.synch_address(),
             transfer_type: ed.transfer_type().into(),
             usage_type: ed.usage_type().into(),
+        }
+    }
+}
+
+impl From<rusb::DeviceDescriptor> for DeviceDescriptor {
+    fn from(descriptor: rusb::DeviceDescriptor) -> Self {
+        Self {
+            device_class: descriptor.class_code(),
+            device_protocol: descriptor.protocol_code(),
+            device_subclass: descriptor.sub_class_code(),
+            device_version: descriptor.device_version().into(),
+            product_id: descriptor.product_id(),
+            usb_version: descriptor.usb_version().into(),
+            vendor_id: descriptor.vendor_id(),
+            max_packet_size: descriptor.max_packet_size(),
+            manufacturer_string_index: descriptor.manufacturer_string_index(),
+            product_string_index: descriptor.product_string_index(),
+            serial_number_string_index: descriptor.serial_number_string_index(),
+            num_configurations: descriptor.num_configurations(),
         }
     }
 }

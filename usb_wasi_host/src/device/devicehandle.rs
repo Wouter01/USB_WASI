@@ -2,10 +2,11 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use anyhow::Result;
+use rusb::ConfigDescriptor;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
-use crate::bindings::component::usb::device::{DeviceHandleError, HostDeviceHandle};
+use crate::bindings::component::usb::{types::DeviceHandleError, usb::HostDeviceHandle};
 
 #[derive(Debug)]
 pub struct MyDeviceHandle {
@@ -22,6 +23,26 @@ where
     fn drop(&mut self, rep: Resource<MyDeviceHandle>) -> Result<()>  {
         Ok(self.table().delete(rep).map(|_| ())?)
     }
+
+    async fn reset(&mut self, handle: Resource<MyDeviceHandle>) -> Result<()> {
+        self.table()
+            .get_mut(&handle)?
+            .handle
+            .reset()?;
+
+        Ok(())
+    }
+
+    async fn active_configuration(&mut self, handle: Resource<MyDeviceHandle>) -> Result<Result<u8, DeviceHandleError>> {
+        let result = self.table()
+            .get_mut(&handle)?
+            .handle
+            .active_configuration()
+            .map_err(|e| e.into());
+
+        Ok(result)
+    }
+
 
     async fn select_configuration(&mut self, handle: Resource<MyDeviceHandle>, configuration: u8) -> Result<()> {
         let _ = self.table()
@@ -86,6 +107,27 @@ where
         Ok(result)
     }
 
+    async fn read_control(&mut self, handle: Resource<MyDeviceHandle>, request_type: u8, request: u8, value: u16, index: u16, max_size: u16) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+        let mut buf: Vec<u8> = vec![0; 10];
+        let result = self.table()
+            .get_mut(&handle)?
+            .handle
+            .read_control(request_type, request, value, index, &mut buf, DEFAULT_TIMEOUT)
+            .map_err(|e| e.into())
+            .map(|a| a as u64);
+
+        Ok(result.map(|bytes_read| (bytes_read, buf)))
+    }
+
+    async fn write_isochronous(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8, data: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
+        todo!()
+    }
+
+    async fn read_isochronous(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+        todo!()
+    }
+
+
     async fn read_bulk(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8, max_size: u16) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
         let mut buffer: Vec<u8> = vec![0; max_size as usize];
         let result = self.table()
@@ -121,23 +163,23 @@ where
         Ok(result)
     }
 
-    async fn detach_kernel_driver(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<Result<(), DeviceHandleError>> {
-        let result = self.table()
-            .get_mut(&handle)?
-            .handle
-            .detach_kernel_driver(interface)
-            .map_err(|e| e.into());
+    // async fn detach_kernel_driver(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<Result<(), DeviceHandleError>> {
+    //     let result = self.table()
+    //         .get_mut(&handle)?
+    //         .handle
+    //         .detach_kernel_driver(interface)
+    //         .map_err(|e| e.into());
 
-        Ok(result)
-    }
+    //     Ok(result)
+    // }
 
-    async fn kernel_driver_active(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<Result<bool, DeviceHandleError>> {
-        let result = self.table()
-            .get_mut(&handle)?
-            .handle
-            .kernel_driver_active(interface)
-            .map_err(|e| e.into());
+    // async fn kernel_driver_active(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<Result<bool, DeviceHandleError>> {
+    //     let result = self.table()
+    //         .get_mut(&handle)?
+    //         .handle
+    //         .kernel_driver_active(interface)
+    //         .map_err(|e| e.into());
 
-        Ok(result)
-    }
+    //     Ok(result)
+    // }
 }

@@ -4,10 +4,10 @@ use std::{fs::File, io::Read, thread::sleep, time::{Duration, Instant}};
 use std::io::{self, Write};
 
 use anyhow::Result;
-use bindings::component::usb::{device::{get_devices, DeviceHandle}, types::{Direction, TransferType}};
+use bindings::component::usb::{usb::{DeviceHandle}, types::{Direction, TransferType}};
 
 use crate::bindings::{
-    component::usb::device::UsbDevice,
+    component::usb::usb::UsbDevice,
     Guest,
 };
 
@@ -15,12 +15,12 @@ struct Component;
 
 impl Guest for Component {
     fn run() -> Result<(), String> {
-        let devices = get_devices();
+        let devices = UsbDevice::enumerate();
 
         let device = devices
             .iter()
             .find(|d| {
-            let props = d.properties();
+            let props = d.device_descriptor();
             props.product_id == 0x8037 && props.vendor_id == 0x2341
             })
             .ok_or("Could not find Arduino Micro.")?;
@@ -35,16 +35,11 @@ impl Guest for Component {
 
         println!("{:#?}", configuration.interfaces);
 
-        let interface = configuration
+        let interface_descriptor = configuration
             .interfaces
             .iter()
-            .find(|i| i.descriptors.iter().find(|d| d.class_code == 0xff).is_some())
-            .ok_or("Device has no interface with number 1")?;
-
-        let interface_descriptor = interface
-            .descriptors
-            .first()
-            .ok_or("Interface has no descriptors")?;
+            .find(|i| i.class_code == 0xff)
+            .ok_or("Device has no device-specific class code.")?;
 
         let endpoint_in = interface_descriptor
             .endpoint_descriptors
@@ -68,7 +63,7 @@ impl Guest for Component {
         }
 
         let buffer: [u8; 10] = [0x01; 10];
-        handle.write_control(33, 0x22, 0x01, interface.number as u16, &buffer)
+        handle.write_control(33, 0x22, 0x01, interface_descriptor.number as u16, &buffer)
             .map_err(|e| e.to_string());
 
         println!("Connected to controller");

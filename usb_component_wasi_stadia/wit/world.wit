@@ -1,8 +1,10 @@
 package component:usb-component-wasi-stadia;
 
 world root {
-	import component:usb/device@0.1.0;
-	import component:usb/events@0.1.0;
+	import component:usb/types@0.2.0;
+	import component:usb/usb@0.2.0;
+	import component:usb/events@0.2.0;
+	import component:usb/descriptors@0.2.0;
 
 	export run: func() -> result<_, string>;
 }

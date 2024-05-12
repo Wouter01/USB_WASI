@@ -10,7 +10,7 @@ package = "component:usb-component-wasi-stadia"
 path = "wit"
 
 [package.metadata.component.target.dependencies]
-"component:usb" = { path = "../usb_wasi_host/wit" }
+"component:usb" = { path = "../WIT/wit" }
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

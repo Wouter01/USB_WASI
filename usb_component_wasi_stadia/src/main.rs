@@ -3,12 +3,12 @@ mod bindings;
 use std::{num::Wrapping, time::{Duration, Instant}};
 
 use anyhow::Result;
-use bindings::component::usb::{device::DeviceHandle, events::update, types::{Direction, TransferType}};
+use bindings::component::usb::{usb::DeviceHandle, events::update, types::{Direction, TransferType}};
 use bitflags::bitflags;
 use tokio::{task::AbortHandle, time::sleep};
 
 use crate::bindings::{
-    component::usb::{device::UsbDevice, events::DeviceConnectionEvent},
+    component::usb::{usb::UsbDevice, events::DeviceConnectionEvent},
     Guest,
 };
 
@@ -55,7 +55,7 @@ impl Guest for Component {
 
 impl UsbDevice {
     fn is_stadia_device(&self) -> bool {
-        let props = self.properties();
+        let props = self.device_descriptor();
         props.product_id == 0x9400 && props.vendor_id == 0x18d1
     }
 }
@@ -70,16 +70,11 @@ impl Component {
             .first()
             .ok_or("Device has no configurations")?;
 
-        let interface = configuration
+        let interface_descriptor = configuration
             .interfaces
             .iter()
             .find(|i| i.number == 1)
             .ok_or("Device has no interface with number 1")?;
-
-        let interface_descriptor = interface
-            .descriptors
-            .first()
-            .ok_or("Interface has no descriptors")?;
 
         let endpoint = interface_descriptor
             .endpoint_descriptors
