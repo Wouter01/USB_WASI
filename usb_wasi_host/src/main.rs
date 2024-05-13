@@ -4,7 +4,7 @@ use clap::Parser;
 use tokio::sync::mpsc::error::TryRecvError;
 use std::{fs::File, path::{Path, PathBuf}, process::exit};
 use wasmtime::{component::*, Config, Engine, Store};
-use wasmtime_wasi::{command, DirPerms, FilePerms, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::{DirPerms, FilePerms, WasiCtx, WasiCtxBuilder, WasiView};
 use async_trait::async_trait;
 use bindings::component::usb::events::{Host as EventsHost, DeviceConnectionEvent as WasmDeviceConnectionEvent};
 
@@ -44,11 +44,11 @@ impl ServerWasiView {
     fn new() -> Result<Self> {
         let table = ResourceTable::new();
 
-        let file = File::open(Path::new("."))?;
         let ctx = WasiCtxBuilder::new()
             .inherit_stdio()
-            .preopened_dir(Dir::from_std_file(file), DirPerms::all(), FilePerms::all(), ".")
+            .preopened_dir(Path::new("."), ".", DirPerms::all(), FilePerms::all())?
             .build();
+
         let (receiver, registration, task) = events::device_connection_updates()?;
         Ok(Self { table, ctx, updates: receiver, registration, task })
     }
@@ -119,7 +119,7 @@ impl UsbDemoApp {
         let engine = Engine::new(&config)?;
         let mut linker = Linker::new(&engine);
 
-        command::add_to_linker(&mut linker)?;
+        wasmtime_wasi::add_to_linker_async(&mut linker)?;
         let component = Component::from_file(&engine, component)?;
 
         UsbHost::add_to_linker(&mut linker, |view| view)?;
