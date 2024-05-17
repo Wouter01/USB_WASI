@@ -1,4 +1,5 @@
 use crate::bindings::component::usb as world;
+use crate::usb_host_wasi_view::USBHostWasiView;
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use rusb::{ConfigDescriptor, DeviceHandle, Language, UsbContext};
@@ -91,10 +92,7 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
 }
 
 #[async_trait]
-impl<T> HostUsbDevice for T
-where
-    T: WasiView
-{
+impl HostUsbDevice for USBHostWasiView {
     fn drop(&mut self, rep: Resource<MyDevice<rusb::Context>>) -> Result<()> {
         Ok(self.table().delete(rep).map(|_| ())?)
     }

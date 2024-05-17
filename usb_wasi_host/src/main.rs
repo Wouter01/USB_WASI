@@ -1,10 +1,10 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use usb_host_wasi_view::USBHostWasiView;
 use std::{path::PathBuf, process::exit};
 use wasmtime::{component::*, Config, Engine, Store};
 
-use crate::bindings::Imports as UsbHost;
+use crate::bindings::Imports;
 
 pub use device::usbdevice::MyDevice;
 pub use device::devicehandle::MyDeviceHandle;
@@ -53,9 +53,9 @@ impl UsbDemoApp {
         let mut linker = Linker::new(&engine);
 
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
-        let component = Component::from_file(&engine, component)?;
+        Imports::add_to_linker(&mut linker, |view| view)?;
 
-        UsbHost::add_to_linker(&mut linker, |view| view)?;
+        let component = Component::from_file(&engine, component)?;
 
         Ok(Self {
             engine,
@@ -81,13 +81,10 @@ impl UsbDemoApp {
 #[tokio::main]
 async fn main() -> Result<()> {
     let parsed = UsbDemoAppParser::parse();
-
     let mut app = UsbDemoApp::new(parsed.component_path)?;
 
-    let result = app.start().await
-        .expect("Could not start component");
-
-    println!("{:?}", result);
-
-    exit(0);
+    app
+        .start()
+        .await?
+        .map_err(|e| anyhow!(e))
 }

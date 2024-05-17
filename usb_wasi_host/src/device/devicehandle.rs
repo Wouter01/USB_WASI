@@ -6,7 +6,7 @@ use rusb::ConfigDescriptor;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
-use crate::bindings::component::usb::{types::DeviceHandleError, usb::HostDeviceHandle};
+use crate::{bindings::component::usb::{types::DeviceHandleError, usb::HostDeviceHandle}, usb_host_wasi_view::USBHostWasiView};
 
 #[derive(Debug)]
 pub struct MyDeviceHandle {
@@ -16,10 +16,7 @@ pub struct MyDeviceHandle {
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[async_trait]
-impl<T> HostDeviceHandle for T
-where
-    T: WasiView
-{
+impl HostDeviceHandle for USBHostWasiView {
     fn drop(&mut self, rep: Resource<MyDeviceHandle>) -> Result<()>  {
         Ok(self.table().delete(rep).map(|_| ())?)
     }
@@ -54,14 +51,14 @@ where
         Ok(())
     }
 
-    async fn claim_interface(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<()> {
-        let _ = self.table()
+    async fn claim_interface(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<Result<(), DeviceHandleError>> {
+        let result = self.table()
             .get_mut(&handle)?
             .handle
             .claim_interface(interface)
-            .map_err(|e| println!("{:?}", e));
+            .map_err(|e| e.into());
 
-        Ok(())
+        Ok(result)
     }
 
     async fn release_interface(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<()> {
