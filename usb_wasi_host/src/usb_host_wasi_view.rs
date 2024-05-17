@@ -58,8 +58,7 @@ impl EventsHost for USBHostWasiView {
                 let d = self.table().push(device)?;
                 WasmDeviceConnectionEvent::Disconnected(d)
             },
-            Err(TryRecvError::Empty) => WasmDeviceConnectionEvent::Pending,
-            Err(TryRecvError::Disconnected) => WasmDeviceConnectionEvent::Closed
+            Err(TryRecvError::Empty | TryRecvError::Disconnected) => WasmDeviceConnectionEvent::Pending
         };
 
         Ok(mapped)

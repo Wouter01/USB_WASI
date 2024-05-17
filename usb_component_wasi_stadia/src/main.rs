@@ -25,7 +25,6 @@ impl Guest for Component {
         loop {
             match update() {
                 DeviceConnectionEvent::Pending => sleep(Duration::from_secs(1)).await,
-                DeviceConnectionEvent::Closed => return Err("No further device updates.".to_string()),
                 DeviceConnectionEvent::Connected(device) if device.is_stadia_device() => {
                     println!("Found Stadia Controller");
 
