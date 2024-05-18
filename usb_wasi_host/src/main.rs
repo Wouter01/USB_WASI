@@ -1,29 +1,23 @@
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use usb_host_wasi_view::USBHostWasiView;
-use std::{path::PathBuf, process::exit};
+use std::path::PathBuf;
 use wasmtime::{component::*, Config, Engine, Store};
 
 use crate::bindings::Imports;
-
-pub use device::usbdevice::MyDevice;
-pub use device::devicehandle::MyDeviceHandle;
 
 mod conversion;
 mod device;
 mod events;
 mod usb_host_wasi_view;
 
-pub type GlobalUsbDevice = MyDevice<rusb::Context>;
-pub type GlobalDeviceHandle = MyDeviceHandle;
-
 pub mod bindings {
     wasmtime::component::bindgen!({
         world: "component:usb/imports",
         async: true,
         with: {
-            "component:usb/usb/usb-device": super::GlobalUsbDevice,
-            "component:usb/usb/device-handle": super::GlobalDeviceHandle,
+            "component:usb/usb/usb-device": crate::device::usbdevice::USBDevice,
+            "component:usb/usb/device-handle": crate::device::devicehandle::DeviceHandle,
         },
         path: "../WIT/wit"
     });

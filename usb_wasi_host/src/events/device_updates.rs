@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tokio::{sync::mpsc, task::JoinHandle};
 use rusb::{UsbContext, Hotplug};
-use crate::device::usbdevice::MyDevice;
+use crate::device::usbdevice::USBDevice;
 
 struct DeviceUpdateHandler {
 	sender: mpsc::Sender<DeviceConnectionEvent>
@@ -41,15 +41,15 @@ impl DeviceUpdateHandler where {
 }
 
 pub enum DeviceConnectionEvent {
-	Connected(MyDevice<rusb::Context>),
-	Disconnected(MyDevice<rusb::Context>)
+	Connected(USBDevice),
+	Disconnected(USBDevice)
 }
 
 impl Hotplug<rusb::Context> for DeviceUpdateHandler {
 	fn device_arrived(&mut self, device: rusb::Device<rusb::Context>) {
 		let sender = self.sender.clone();
 
-		let mydevice = MyDevice { device };
+		let mydevice = USBDevice { device };
 		// sender.blocking_send cannot be used here, so a new task is created.
 		// Blocking send will cause the main thread to panic.
 		tokio::spawn(async move {
@@ -60,7 +60,7 @@ impl Hotplug<rusb::Context> for DeviceUpdateHandler {
 	fn device_left(&mut self, device: rusb::Device<rusb::Context>) {
 		let sender = self.sender.clone();
 
-		let mydevice = MyDevice { device };
+		let mydevice = USBDevice { device };
 
 		tokio::spawn(async move {
 			let _ = sender.send(DeviceConnectionEvent::Disconnected(mydevice)).await;

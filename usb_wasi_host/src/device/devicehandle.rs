@@ -2,14 +2,13 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use anyhow::Result;
-use rusb::ConfigDescriptor;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
 use crate::{bindings::component::usb::{types::DeviceHandleError, usb::HostDeviceHandle}, usb_host_wasi_view::USBHostWasiView};
 
 #[derive(Debug)]
-pub struct MyDeviceHandle {
+pub struct DeviceHandle {
     pub handle: rusb::DeviceHandle<rusb::Context>
 }
 
@@ -17,11 +16,11 @@ const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[async_trait]
 impl HostDeviceHandle for USBHostWasiView {
-    fn drop(&mut self, rep: Resource<MyDeviceHandle>) -> Result<()>  {
+    fn drop(&mut self, rep: Resource<DeviceHandle>) -> Result<()>  {
         Ok(self.table().delete(rep).map(|_| ())?)
     }
 
-    async fn reset(&mut self, handle: Resource<MyDeviceHandle>) -> Result<()> {
+    async fn reset(&mut self, handle: Resource<DeviceHandle>) -> Result<()> {
         self.table()
             .get_mut(&handle)?
             .handle
@@ -30,7 +29,7 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(())
     }
 
-    async fn active_configuration(&mut self, handle: Resource<MyDeviceHandle>) -> Result<Result<u8, DeviceHandleError>> {
+    async fn active_configuration(&mut self, handle: Resource<DeviceHandle>) -> Result<Result<u8, DeviceHandleError>> {
         let result = self.table()
             .get_mut(&handle)?
             .handle
@@ -41,7 +40,7 @@ impl HostDeviceHandle for USBHostWasiView {
     }
 
 
-    async fn select_configuration(&mut self, handle: Resource<MyDeviceHandle>, configuration: u8) -> Result<()> {
+    async fn select_configuration(&mut self, handle: Resource<DeviceHandle>, configuration: u8) -> Result<()> {
         let _ = self.table()
             .get_mut(&handle)?
             .handle
@@ -51,7 +50,7 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(())
     }
 
-    async fn claim_interface(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<Result<(), DeviceHandleError>> {
+    async fn claim_interface(&mut self, handle: Resource<DeviceHandle>, interface: u8) -> Result<Result<(), DeviceHandleError>> {
         let result = self.table()
             .get_mut(&handle)?
             .handle
@@ -61,7 +60,7 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(result)
     }
 
-    async fn release_interface(&mut self, handle: Resource<MyDeviceHandle>, interface: u8) -> Result<()> {
+    async fn release_interface(&mut self, handle: Resource<DeviceHandle>, interface: u8) -> Result<()> {
         let _ = self.table()
             .get_mut(&handle)?
             .handle
@@ -71,7 +70,7 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(())
     }
 
-    async fn write_interrupt(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8, data: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
+    async fn write_interrupt(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, data: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
         let result = self.table()
             .get_mut(&handle)?
             .handle
@@ -82,7 +81,7 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(result)
     }
 
-    async fn write_bulk(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8, data: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
+    async fn write_bulk(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, data: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
         let result = self.table()
             .get_mut(&handle)?
             .handle
@@ -93,7 +92,7 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(result)
     }
 
-    async fn write_control(&mut self, handle: Resource<MyDeviceHandle>, request_type: u8, request: u8, value: u16, index: u16, buf: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
+    async fn write_control(&mut self, handle: Resource<DeviceHandle>, request_type: u8, request: u8, value: u16, index: u16, buf: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
         let result = self.table()
             .get_mut(&handle)?
             .handle
@@ -104,7 +103,7 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(result)
     }
 
-    async fn read_control(&mut self, handle: Resource<MyDeviceHandle>, request_type: u8, request: u8, value: u16, index: u16, max_size: u16) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+    async fn read_control(&mut self, handle: Resource<DeviceHandle>, request_type: u8, request: u8, value: u16, index: u16, max_size: u16) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
         let mut buf: Vec<u8> = vec![0; 10];
         let result = self.table()
             .get_mut(&handle)?
@@ -116,16 +115,16 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(result.map(|bytes_read| (bytes_read, buf)))
     }
 
-    async fn write_isochronous(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8, data: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
+    async fn write_isochronous(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, data: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
         todo!()
     }
 
-    async fn read_isochronous(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+    async fn read_isochronous(&mut self, handle: Resource<DeviceHandle>, endpoint: u8) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
         todo!()
     }
 
 
-    async fn read_bulk(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8, max_size: u16) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+    async fn read_bulk(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, max_size: u16) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
         let mut buffer: Vec<u8> = vec![0; max_size as usize];
         let result = self.table()
             .get_mut(&handle)?
@@ -137,7 +136,7 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(result.map(|a| (a, buffer)))
     }
 
-    async fn read_interrupt(&mut self, handle: Resource<MyDeviceHandle>, endpoint: u8) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+    async fn read_interrupt(&mut self, handle: Resource<DeviceHandle>, endpoint: u8) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
         let mut buf = [0; 256];
         let result = self.table()
             .get_mut(&handle)?
@@ -149,7 +148,7 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(result.map(|a| (a, buf.to_vec())))
     }
 
-    async fn select_alternate_interface(&mut self, handle: Resource<MyDeviceHandle>, interface: u8, setting: u8) -> Result<Result<(), DeviceHandleError>> {
+    async fn select_alternate_interface(&mut self, handle: Resource<DeviceHandle>, interface: u8, setting: u8) -> Result<Result<(), DeviceHandleError>> {
 
         let result = self.table()
             .get_mut(&handle)?

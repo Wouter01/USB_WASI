@@ -2,7 +2,7 @@ use crate::bindings::component::usb as world;
 use crate::usb_host_wasi_view::USBHostWasiView;
 use anyhow::{Error, Result};
 use async_trait::async_trait;
-use rusb::{ConfigDescriptor, DeviceHandle, Language, UsbContext};
+use rusb::{ConfigDescriptor, DeviceHandle as RusbDeviceHandle, Language, UsbContext};
 use std::time::Duration;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
@@ -11,17 +11,17 @@ use world::usb::HostUsbDevice;
 use world::descriptors::{ConfigurationDescriptor, InterfaceDescriptor, DeviceDescriptor};
 use world::types::DeviceHandleError;
 
-use super::devicehandle::MyDeviceHandle;
+use super::devicehandle::DeviceHandle;
 
 #[derive(Debug)]
-pub struct MyDevice<T: rusb::UsbContext> {
-    pub device: rusb::Device<T>,
+pub struct USBDevice {
+    pub device: rusb::Device<rusb::Context>,
 }
 
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 
-impl<T> MyDevice<T> where T: rusb::UsbContext {
-    fn get_language(handle: &rusb::DeviceHandle<T>, timeout: Duration) -> Result<rusb::Language> {
+impl USBDevice {
+    fn get_language(handle: &rusb::DeviceHandle<rusb::Context>, timeout: Duration) -> Result<rusb::Language> {
         let languages = handle.read_languages(timeout)?;
         let language = languages
             .first()
@@ -31,23 +31,8 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
     }
 }
 
-impl<T> MyDevice<T> where T: rusb::UsbContext {
-    // fn get_properties(&self) -> Result<Properties> {
-    //     let device = &self.device;
-    //     let d = device.device_descriptor()?;
-    //     let props = Properties {
-    //         device_class: d.class_code(),
-    //         device_protocol: d.protocol_code(),
-    //         device_subclass: d.sub_class_code(),
-    //         device_version: d.device_version().into(),
-    //         product_id: d.product_id(),
-    //         usb_version: d.usb_version().into(),
-    //         vendor_id: d.vendor_id(),
-    //     };
-    //     Ok(props)
-    // }
-
-    fn read_property<S>(&self, perform: impl FnOnce(&rusb::Device<T>, DeviceHandle<T>, &Language) -> Result<S, rusb::Error>) -> Result<S, DeviceHandleError> {
+impl USBDevice {
+    fn read_property<S>(&self, perform: impl FnOnce(&rusb::Device<rusb::Context>, RusbDeviceHandle<rusb::Context>, &Language) -> Result<S, rusb::Error>) -> Result<S, DeviceHandleError> {
         let device = &self.device;
         let handle = device.open().map_err(DeviceHandleError::from)?;
         let languages = handle.read_languages(DEFAULT_TIMEOUT).map_err(DeviceHandleError::from)?;
@@ -59,7 +44,7 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
             .map_err(DeviceHandleError::from)
     }
 
-    fn get_configuration<Context: UsbContext>(&self, handle: &DeviceHandle<Context>, config: ConfigDescriptor, language: &Language) -> ConfigurationDescriptor {
+    fn get_configuration<Context: UsbContext>(&self, handle: &RusbDeviceHandle<Context>, config: ConfigDescriptor, language: &Language) -> ConfigurationDescriptor {
         let name = handle
             .read_configuration_string(*language, &config, DEFAULT_TIMEOUT)
             .ok();
@@ -93,11 +78,11 @@ impl<T> MyDevice<T> where T: rusb::UsbContext {
 
 #[async_trait]
 impl HostUsbDevice for USBHostWasiView {
-    fn drop(&mut self, rep: Resource<MyDevice<rusb::Context>>) -> Result<()> {
+    fn drop(&mut self, rep: Resource<USBDevice>) -> Result<()> {
         Ok(self.table().delete(rep).map(|_| ())?)
     }
 
-    async fn device_descriptor(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<DeviceDescriptor> {
+    async fn device_descriptor(&mut self, device: Resource<USBDevice>) -> Result<DeviceDescriptor> {
         let descriptor = self
             .table()
             .get(&device)?
@@ -107,7 +92,7 @@ impl HostUsbDevice for USBHostWasiView {
         Ok(descriptor)
     }
 
-    async fn configurations(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<Vec<ConfigurationDescriptor>, DeviceHandleError>> {
+    async fn configurations(&mut self, device: Resource<USBDevice>) -> Result<Result<Vec<ConfigurationDescriptor>, DeviceHandleError>> {
         let resource = self
             .table()
             .get(&device)?;
@@ -180,7 +165,7 @@ impl HostUsbDevice for USBHostWasiView {
     //     Ok(name)
     // }
 
-    async fn open(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<Resource<MyDeviceHandle>, DeviceHandleError>> {
+    async fn open(&mut self, device: Resource<USBDevice>) -> Result<Result<Resource<DeviceHandle>, DeviceHandleError>> {
         let mut handle = self
             .table()
             .get(&device)?
@@ -192,12 +177,12 @@ impl HostUsbDevice for USBHostWasiView {
 
         let resource = self
             .table()
-            .push(MyDeviceHandle {handle})?;
+            .push(DeviceHandle {handle})?;
 
         Ok(Ok(resource))
     }
 
-    async fn enumerate(&mut self) -> Result<Vec<Resource<MyDevice<rusb::Context>>>> {
+    async fn enumerate(&mut self) -> Result<Vec<Resource<USBDevice>>> {
         let context = rusb::Context::new();
 
         context?
@@ -206,7 +191,7 @@ impl HostUsbDevice for USBHostWasiView {
             .map(|device| {
                 self
                     .table()
-                    .push(MyDevice { device })
+                    .push(USBDevice { device })
                     .map_err(Error::from)
             })
             .collect()
