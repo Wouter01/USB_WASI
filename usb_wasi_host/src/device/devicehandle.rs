@@ -9,6 +9,7 @@ use crate::{bindings::component::usb::{types::DeviceHandleError, usb::HostDevice
 
 #[derive(Debug)]
 pub struct DeviceHandle {
+    pub device_address: u8,
     pub handle: rusb::DeviceHandle<rusb::Context>
 }
 
@@ -17,7 +18,11 @@ const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 #[async_trait]
 impl HostDeviceHandle for USBHostWasiView {
     fn drop(&mut self, rep: Resource<DeviceHandle>) -> Result<()>  {
-        Ok(self.table().delete(rep).map(|_| ())?)
+        let handle = self.table().delete(rep)?;
+
+        let was_present = self.active_device_handles.remove(&handle.device_address);
+        assert!(was_present);
+        Ok(())
     }
 
     async fn reset(&mut self, handle: Resource<DeviceHandle>) -> Result<()> {

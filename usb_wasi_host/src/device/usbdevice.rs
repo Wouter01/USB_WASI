@@ -166,18 +166,28 @@ impl HostUsbDevice for USBHostWasiView {
     // }
 
     async fn open(&mut self, device: Resource<USBDevice>) -> Result<Result<Resource<DeviceHandle>, DeviceHandleError>> {
+        let device_address = self
+            .table()
+            .get(&device)?
+            .device
+            .address();
+
+        let already_present = !self.active_device_handles.insert(device_address);
+        if already_present {
+            return Ok(Err(DeviceHandleError::Access));
+        }
+
         let mut handle = self
             .table()
             .get(&device)?
             .device
             .open()?;
 
-        handle.reset()?;
         _ = handle.set_auto_detach_kernel_driver(true);
 
         let resource = self
             .table()
-            .push(DeviceHandle {handle})?;
+            .push(DeviceHandle {device_address, handle})?;
 
         Ok(Ok(resource))
     }

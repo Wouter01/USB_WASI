@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::Path;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -13,7 +14,8 @@ pub(crate) struct USBHostWasiView {
     ctx: WasiCtx,
     updates: tokio::sync::mpsc::Receiver<events::DeviceConnectionEvent>,
     registration: rusb::Registration<rusb::Context>,
-    task: tokio::task::JoinHandle<()>
+    task: tokio::task::JoinHandle<()>,
+    pub(crate) active_device_handles: HashSet<u8>
 }
 
 impl USBHostWasiView {
@@ -26,7 +28,7 @@ impl USBHostWasiView {
             .build();
 
         let (receiver, registration, task) = events::device_connection_updates()?;
-        Ok(Self { table, ctx, updates: receiver, registration, task })
+        Ok(Self { table, ctx, updates: receiver, registration, task, active_device_handles: HashSet::new() })
     }
 }
 
