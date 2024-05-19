@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use usb_host_wasi_view::USBHostWasiView;
+use wasmtime_wasi::bindings::Command;
 use std::path::PathBuf;
 use wasmtime::{component::*, Config, Engine, Store};
 
@@ -62,26 +63,9 @@ impl UsbDemoApp {
         let data = USBHostWasiView::new()?;
         let mut store = Store::new(&self.engine, data);
 
-        let input: Vec<wasmtime::component::Val> = vec![];
-        let mut output: Vec<wasmtime::component::Val> = vec![];
-
-        let (command, _instance) = wasmtime_wasi::bindings::Command::instantiate_async(&mut store, &self.component, &self.linker).await?;
+        let (command, _) = Command::instantiate_async(&mut store, &self.component, &self.linker).await?;
 
         command.wasi_cli_run().call_run(store).await
-
-        // let (command, _instance) = wasmtime_wasi::bindings::sync::Command::instantiate(&mut store, &self.component, &self.linker)?;
-
-        // command.wasi_cli_run().call_run(&mut store)?;
-
-        // self
-        //     .linker
-        //     .instantiate_async(&mut store, &self.component).await?
-        //     .get_func(&mut store, "").unwrap()
-        //     .call_async(&mut store, &input, &mut output)
-        //     .await
-        //     .map(|result| result);
-
-            // Ok(Ok(()))
     }
 }
 
@@ -90,8 +74,6 @@ async fn main() -> Result<()> {
     let parsed = UsbDemoAppParser::parse();
     let mut app = UsbDemoApp::new(parsed.component_path)?;
 
-    app
-        .start()
-        .await?
+    app.start().await?
         .map_err(|_| anyhow!("Failed to run component."))
 }
