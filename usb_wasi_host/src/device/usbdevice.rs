@@ -44,10 +44,7 @@ impl USBDevice {
             .map_err(DeviceHandleError::from)
     }
 
-    fn get_configuration<Context: UsbContext>(&self, handle: &RusbDeviceHandle<Context>, config: ConfigDescriptor, language: &Language) -> ConfigurationDescriptor {
-        let name = handle
-            .read_configuration_string(*language, &config, DEFAULT_TIMEOUT)
-            .ok();
+    fn get_configuration(&self, config: ConfigDescriptor) -> ConfigurationDescriptor {
 
         let interfaces = config
             .interfaces()
@@ -66,7 +63,6 @@ impl USBDevice {
             .collect();
 
         let configuration = ConfigurationDescriptor {
-            name,
             max_power: config.max_power(),
             number: config.number(),
             interfaces,
@@ -97,20 +93,22 @@ impl HostUsbDevice for USBHostWasiView {
             .table()
             .get(&device)?;
 
-        let configs = resource.read_property(|device, handle, language| {
-            let config_count = device.device_descriptor()?.num_configurations();
-            let mut configurations: Vec<ConfigurationDescriptor> = Vec::with_capacity(config_count.into());
+        let device = &resource.device;
 
-            for i in 0..config_count {
-                let config = device.config_descriptor(i)?;
-                let resource = resource.get_configuration(&handle, config, language);
-                configurations.push(resource)
+        let config_count = device.device_descriptor()?.num_configurations();
+        let mut configurations: Vec<ConfigurationDescriptor> = Vec::with_capacity(config_count.into());
+
+        for i in 0..config_count {
+            match device.config_descriptor(i) {
+                Ok(config) => {
+                    let resource = resource.get_configuration(config);
+                    configurations.push(resource)
+                }
+                Err(error) => return Ok(Err(error.into()))
             }
+        }
 
-            Ok(configurations)
-        });
-
-        Ok(configs)
+        Ok(Ok(configurations))
     }
 
     // async fn configurations(&mut self, device: Resource<MyDevice<rusb::Context>>) -> Result<Result<ConfigurationDescriptor, DeviceHandleError>> {

@@ -343,7 +343,6 @@ pub mod component {
             }
             #[derive(Clone)]
             pub struct ConfigurationDescriptor {
-                pub name: Option<_rt::String>,
                 pub max_power: u16,
                 pub number: u8,
                 pub interfaces: _rt::Vec<InterfaceDescriptor>,
@@ -351,7 +350,6 @@ pub mod component {
             impl ::core::fmt::Debug for ConfigurationDescriptor {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     f.debug_struct("ConfigurationDescriptor")
-                        .field("name", &self.name)
                         .field("max-power", &self.max_power)
                         .field("number", &self.number)
                         .field("interfaces", &self.interfaces)
@@ -529,145 +527,129 @@ pub mod component {
                                 let e = {
                                     let l2 = *ptr0.add(4).cast::<*mut u8>();
                                     let l3 = *ptr0.add(8).cast::<usize>();
-                                    let base33 = l2;
-                                    let len33 = l3;
-                                    let mut result33 = _rt::Vec::with_capacity(len33);
-                                    for i in 0..len33 {
-                                        let base = base33.add(i * 24);
-                                        let e33 = {
-                                            let l4 = i32::from(*base.add(0).cast::<u8>());
-                                            let l8 = i32::from(*base.add(12).cast::<u16>());
-                                            let l9 = i32::from(*base.add(14).cast::<u8>());
-                                            let l10 = *base.add(16).cast::<*mut u8>();
-                                            let l11 = *base.add(20).cast::<usize>();
-                                            let base32 = l10;
-                                            let len32 = l11;
-                                            let mut result32 = _rt::Vec::with_capacity(len32);
-                                            for i in 0..len32 {
-                                                let base = base32.add(i * 16);
-                                                let e32 = {
-                                                    let l12 = i32::from(*base.add(0).cast::<u8>());
-                                                    let l13 = i32::from(*base.add(1).cast::<u8>());
-                                                    let l14 = i32::from(*base.add(2).cast::<u8>());
-                                                    let l15 = i32::from(*base.add(3).cast::<u8>());
-                                                    let l16 = i32::from(*base.add(4).cast::<u8>());
-                                                    let l17 = i32::from(*base.add(5).cast::<u8>());
-                                                    let l19 = *base.add(8).cast::<*mut u8>();
-                                                    let l20 = *base.add(12).cast::<usize>();
-                                                    let base31 = l19;
-                                                    let len31 = l20;
-                                                    let mut result31 =
-                                                        _rt::Vec::with_capacity(len31);
-                                                    for i in 0..len31 {
-                                                        let base = base31.add(i * 12);
-                                                        let e31 = {
-                                                            let l21 = i32::from(
+                                    let base29 = l2;
+                                    let len29 = l3;
+                                    let mut result29 = _rt::Vec::with_capacity(len29);
+                                    for i in 0..len29 {
+                                        let base = base29.add(i * 12);
+                                        let e29 = {
+                                            let l4 = i32::from(*base.add(0).cast::<u16>());
+                                            let l5 = i32::from(*base.add(2).cast::<u8>());
+                                            let l6 = *base.add(4).cast::<*mut u8>();
+                                            let l7 = *base.add(8).cast::<usize>();
+                                            let base28 = l6;
+                                            let len28 = l7;
+                                            let mut result28 = _rt::Vec::with_capacity(len28);
+                                            for i in 0..len28 {
+                                                let base = base28.add(i * 16);
+                                                let e28 = {
+                                                    let l8 = i32::from(*base.add(0).cast::<u8>());
+                                                    let l9 = i32::from(*base.add(1).cast::<u8>());
+                                                    let l10 = i32::from(*base.add(2).cast::<u8>());
+                                                    let l11 = i32::from(*base.add(3).cast::<u8>());
+                                                    let l12 = i32::from(*base.add(4).cast::<u8>());
+                                                    let l13 = i32::from(*base.add(5).cast::<u8>());
+                                                    let l15 = *base.add(8).cast::<*mut u8>();
+                                                    let l16 = *base.add(12).cast::<usize>();
+                                                    let base27 = l15;
+                                                    let len27 = l16;
+                                                    let mut result27 =
+                                                        _rt::Vec::with_capacity(len27);
+                                                    for i in 0..len27 {
+                                                        let base = base27.add(i * 12);
+                                                        let e27 = {
+                                                            let l17 = i32::from(
                                                                 *base.add(0).cast::<u8>(),
                                                             );
-                                                            let l22 = i32::from(
+                                                            let l18 = i32::from(
                                                                 *base.add(1).cast::<u8>(),
                                                             );
-                                                            let l23 = i32::from(
+                                                            let l19 = i32::from(
                                                                 *base.add(2).cast::<u8>(),
                                                             );
-                                                            let l24 = i32::from(
+                                                            let l20 = i32::from(
                                                                 *base.add(4).cast::<u16>(),
                                                             );
-                                                            let l25 = i32::from(
+                                                            let l21 = i32::from(
                                                                 *base.add(6).cast::<u8>(),
                                                             );
-                                                            let l26 = i32::from(
+                                                            let l22 = i32::from(
                                                                 *base.add(7).cast::<u8>(),
                                                             );
-                                                            let l27 = i32::from(
+                                                            let l23 = i32::from(
                                                                 *base.add(8).cast::<u8>(),
                                                             );
-                                                            let l28 = i32::from(
+                                                            let l24 = i32::from(
                                                                 *base.add(9).cast::<u8>(),
                                                             );
-                                                            let l29 = i32::from(
+                                                            let l25 = i32::from(
                                                                 *base.add(10).cast::<u8>(),
                                                             );
-                                                            let l30 = i32::from(
+                                                            let l26 = i32::from(
                                                                 *base.add(11).cast::<u8>(),
                                                             );
 
                                                             super::super::super::component::usb::descriptors::EndpointDescriptor{
-                                address: l21 as u8,
-                                direction: super::super::super::component::usb::types::Direction::_lift(l22 as u8),
-                                interval: l23 as u8,
-                                max_packet_size: l24 as u16,
-                                number: l25 as u8,
-                                refresh: l26 as u8,
-                                sync_type: super::super::super::component::usb::types::SyncType::_lift(l27 as u8),
-                                synch_address: l28 as u8,
-                                transfer_type: super::super::super::component::usb::types::TransferType::_lift(l29 as u8),
-                                usage_type: super::super::super::component::usb::types::UsageType::_lift(l30 as u8),
+                                address: l17 as u8,
+                                direction: super::super::super::component::usb::types::Direction::_lift(l18 as u8),
+                                interval: l19 as u8,
+                                max_packet_size: l20 as u16,
+                                number: l21 as u8,
+                                refresh: l22 as u8,
+                                sync_type: super::super::super::component::usb::types::SyncType::_lift(l23 as u8),
+                                synch_address: l24 as u8,
+                                transfer_type: super::super::super::component::usb::types::TransferType::_lift(l25 as u8),
+                                usage_type: super::super::super::component::usb::types::UsageType::_lift(l26 as u8),
                               }
                                                         };
-                                                        result31.push(e31);
+                                                        result27.push(e27);
                                                     }
-                                                    _rt::cabi_dealloc(base31, len31 * 12, 2);
+                                                    _rt::cabi_dealloc(base27, len27 * 12, 2);
 
                                                     super::super::super::component::usb::descriptors::InterfaceDescriptor{
-                            number: l12 as u8,
-                            alternate_setting: l13 as u8,
-                            class_code: l14 as u8,
-                            subclass_code: l15 as u8,
-                            protocol: l16 as u8,
-                            interface_string_index: match l17 {
+                            number: l8 as u8,
+                            alternate_setting: l9 as u8,
+                            class_code: l10 as u8,
+                            subclass_code: l11 as u8,
+                            protocol: l12 as u8,
+                            interface_string_index: match l13 {
                               0 => None,
                               1 => {
                                 let e = {
-                                  let l18 = i32::from(*base.add(6).cast::<u8>());
+                                  let l14 = i32::from(*base.add(6).cast::<u8>());
 
-                                  l18 as u8
+                                  l14 as u8
                                 };
                                 Some(e)
                               }
                               _ => _rt::invalid_enum_discriminant(),
                             },
-                            endpoint_descriptors: result31,
+                            endpoint_descriptors: result27,
                           }
                                                 };
-                                                result32.push(e32);
+                                                result28.push(e28);
                                             }
-                                            _rt::cabi_dealloc(base32, len32 * 16, 4);
+                                            _rt::cabi_dealloc(base28, len28 * 16, 4);
 
                                             super::super::super::component::usb::descriptors::ConfigurationDescriptor{
-                        name: match l4 {
-                          0 => None,
-                          1 => {
-                            let e = {
-                              let l5 = *base.add(4).cast::<*mut u8>();
-                              let l6 = *base.add(8).cast::<usize>();
-                              let len7 = l6;
-                              let bytes7 = _rt::Vec::from_raw_parts(l5.cast(), len7, len7);
-
-                              _rt::string_lift(bytes7)
-                            };
-                            Some(e)
-                          }
-                          _ => _rt::invalid_enum_discriminant(),
-                        },
-                        max_power: l8 as u16,
-                        number: l9 as u8,
-                        interfaces: result32,
+                        max_power: l4 as u16,
+                        number: l5 as u8,
+                        interfaces: result28,
                       }
                                         };
-                                        result33.push(e33);
+                                        result29.push(e29);
                                     }
-                                    _rt::cabi_dealloc(base33, len33 * 24, 4);
+                                    _rt::cabi_dealloc(base29, len29 * 12, 4);
 
-                                    result33
+                                    result29
                                 };
                                 Ok(e)
                             }
                             1 => {
                                 let e = {
-                                    let l34 = i32::from(*ptr0.add(4).cast::<u8>());
+                                    let l30 = i32::from(*ptr0.add(4).cast::<u8>());
 
-                                    super::super::super::component::usb::types::DeviceHandleError::_lift(l34 as u8)
+                                    super::super::super::component::usb::types::DeviceHandleError::_lift(l30 as u8)
                                 };
                                 Err(e)
                             }
@@ -1600,7 +1582,6 @@ pub mod component {
     }
 }
 mod _rt {
-    pub use alloc_crate::string::String;
     pub use alloc_crate::vec::Vec;
 
     use core::fmt;
@@ -1696,13 +1677,6 @@ mod _rt {
             }
         }
     }
-    pub unsafe fn string_lift(bytes: Vec<u8>) -> String {
-        if cfg!(debug_assertions) {
-            String::from_utf8(bytes).unwrap()
-        } else {
-            String::from_utf8_unchecked(bytes)
-        }
-    }
     pub unsafe fn invalid_enum_discriminant<T>() -> T {
         if cfg!(debug_assertions) {
             panic!("invalid enum discriminant")
@@ -1794,8 +1768,8 @@ mod _rt {
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.24.0:root:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2950] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x8b\x16\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2941] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x82\x16\x01A\x02\x01\
 A\x11\x01B\x0c\x01m\x0e\x02io\x0dinvalid-param\x06access\x09no-device\x09not-fou\
 nd\x04busy\x07timeout\x08overflow\x04pipe\x0binterrupted\x06no-mem\x0dnot-suppor\
 ted\x0ebad-descriptor\x05other\x04\0\x13device-handle-error\x03\0\0\x01m\x02\x02\
@@ -1805,7 +1779,7 @@ us\x08adaptive\x0bsynchronous\x04\0\x09sync-type\x03\0\x06\x01m\x04\x07control\x
 isochronous\x04bulk\x09interrupt\x04\0\x0dtransfer-type\x03\0\x08\x01r\x03\x05ma\
 jor}\x05minor}\x08subminor}\x04\0\x07version\x03\0\x0a\x03\x01\x19component:usb/\
 types@0.2.0\x05\0\x02\x03\0\0\x09direction\x02\x03\0\0\x09sync-type\x02\x03\0\0\x0d\
-transfer-type\x02\x03\0\0\x0ausage-type\x02\x03\0\0\x07version\x01B\x16\x02\x03\x02\
+transfer-type\x02\x03\0\0\x0ausage-type\x02\x03\0\0\x07version\x01B\x15\x02\x03\x02\
 \x01\x01\x04\0\x09direction\x03\0\0\x02\x03\x02\x01\x02\x04\0\x09sync-type\x03\0\
 \x02\x02\x03\x02\x01\x03\x04\0\x0dtransfer-type\x03\0\x04\x02\x03\x02\x01\x04\x04\
 \0\x0ausage-type\x03\0\x06\x02\x03\x02\x01\x05\x04\0\x07version\x03\0\x08\x01r\x0a\
@@ -1814,45 +1788,45 @@ resh}\x09sync-type\x03\x0dsynch-address}\x0dtransfer-type\x05\x0ausage-type\x07\
 \0\x13endpoint-descriptor\x03\0\x0a\x01k}\x01p\x0b\x01r\x07\x06number}\x11altern\
 ate-setting}\x0aclass-code}\x0dsubclass-code}\x08protocol}\x16interface-string-i\
 ndex\x0c\x14endpoint-descriptors\x0d\x04\0\x14interface-descriptor\x03\0\x0e\x01\
-ks\x01p\x0f\x01r\x04\x04name\x10\x09max-power{\x06number}\x0ainterfaces\x11\x04\0\
-\x18configuration-descriptor\x03\0\x12\x01r\x0c\x0cdevice-class}\x0fdevice-proto\
-col}\x0fdevice-subclass}\x0edevice-version\x09\x0aproduct-id{\x0busb-version\x09\
-\x09vendor-id{\x0fmax-packet-size}\x19manufacturer-string-index\x0c\x14product-s\
-tring-index\x0c\x1aserial-number-string-index\x0c\x12num-configurations}\x04\0\x11\
-device-descriptor\x03\0\x14\x03\x01\x1fcomponent:usb/descriptors@0.2.0\x05\x06\x02\
-\x03\0\0\x13device-handle-error\x02\x03\0\x01\x18configuration-descriptor\x02\x03\
-\0\x01\x11device-descriptor\x01B7\x02\x03\x02\x01\x07\x04\0\x13device-handle-err\
-or\x03\0\0\x02\x03\x02\x01\x08\x04\0\x18configuration-descriptor\x03\0\x02\x02\x03\
-\x02\x01\x09\x04\0\x11device-descriptor\x03\0\x04\x04\0\x0ausb-device\x03\x01\x04\
-\0\x0ddevice-handle\x03\x01\x01h\x06\x01p\x03\x01j\x01\x09\x01\x01\x01@\x01\x04s\
-elf\x08\0\x0a\x04\0![method]usb-device.configurations\x01\x0b\x01@\x01\x04self\x08\
-\0\x05\x04\0$[method]usb-device.device-descriptor\x01\x0c\x01i\x07\x01j\x01\x0d\x01\
-\x01\x01@\x01\x04self\x08\0\x0e\x04\0\x17[method]usb-device.open\x01\x0f\x01i\x06\
-\x01p\x10\x01@\0\0\x11\x04\0\x1c[static]usb-device.enumerate\x01\x12\x01h\x07\x01\
-@\x01\x04self\x13\x01\0\x04\0\x1b[method]device-handle.reset\x01\x14\x01j\x01}\x01\
-\x01\x01@\x01\x04self\x13\0\x15\x04\0*[method]device-handle.active-configuration\
-\x01\x16\x01@\x02\x04self\x13\x0dconfiguration}\x01\0\x04\0*[method]device-handl\
-e.select-configuration\x01\x17\x01j\0\x01\x01\x01@\x02\x04self\x13\x09interface}\
-\0\x18\x04\0%[method]device-handle.claim-interface\x01\x19\x01@\x02\x04self\x13\x09\
-interface}\x01\0\x04\0'[method]device-handle.release-interface\x01\x1a\x01@\x03\x04\
-self\x13\x09interface}\x07setting}\0\x18\x04\00[method]device-handle.select-alte\
-rnate-interface\x01\x1b\x01p}\x01o\x02w\x1c\x01j\x01\x1d\x01\x01\x01@\x02\x04sel\
-f\x13\x08endpoint}\0\x1e\x04\0$[method]device-handle.read-interrupt\x01\x1f\x01j\
-\x01w\x01\x01\x01@\x03\x04self\x13\x08endpoint}\x04data\x1c\0\x20\x04\0%[method]\
-device-handle.write-interrupt\x01!\x01@\x03\x04self\x13\x08endpoint}\x08max-size\
-{\0\x1e\x04\0\x1f[method]device-handle.read-bulk\x01\"\x04\0\x20[method]device-h\
-andle.write-bulk\x01!\x04\0&[method]device-handle.read-isochronous\x01\x1f\x04\0\
-'[method]device-handle.write-isochronous\x01!\x01@\x06\x04self\x13\x0crequest-ty\
-pe}\x07request}\x05value{\x05index{\x08max-size{\0\x1e\x04\0\"[method]device-han\
-dle.read-control\x01#\x01@\x06\x04self\x13\x0crequest-type}\x07request}\x05value\
-{\x05index{\x03buf\x1c\0\x20\x04\0#[method]device-handle.write-control\x01$\x03\x01\
-\x17component:usb/usb@0.2.0\x05\x0a\x02\x03\0\x02\x0ausb-device\x01B\x07\x02\x03\
-\x02\x01\x0b\x04\0\x0ausb-device\x03\0\0\x01i\x01\x01q\x03\x07pending\0\0\x09con\
-nected\x01\x02\0\x0cdisconnected\x01\x02\0\x04\0\x17device-connection-event\x03\0\
-\x03\x01@\0\0\x04\x04\0\x06update\x01\x05\x03\x01\x1acomponent:usb/events@0.2.0\x05\
-\x0c\x04\x01(component:usb-component-wasi-stadia/root\x04\0\x0b\x0a\x01\0\x04roo\
-t\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.202.0\x10\
-wit-bindgen-rust\x060.24.0";
+p\x0f\x01r\x03\x09max-power{\x06number}\x0ainterfaces\x10\x04\0\x18configuration\
+-descriptor\x03\0\x11\x01r\x0c\x0cdevice-class}\x0fdevice-protocol}\x0fdevice-su\
+bclass}\x0edevice-version\x09\x0aproduct-id{\x0busb-version\x09\x09vendor-id{\x0f\
+max-packet-size}\x19manufacturer-string-index\x0c\x14product-string-index\x0c\x1a\
+serial-number-string-index\x0c\x12num-configurations}\x04\0\x11device-descriptor\
+\x03\0\x13\x03\x01\x1fcomponent:usb/descriptors@0.2.0\x05\x06\x02\x03\0\0\x13dev\
+ice-handle-error\x02\x03\0\x01\x18configuration-descriptor\x02\x03\0\x01\x11devi\
+ce-descriptor\x01B7\x02\x03\x02\x01\x07\x04\0\x13device-handle-error\x03\0\0\x02\
+\x03\x02\x01\x08\x04\0\x18configuration-descriptor\x03\0\x02\x02\x03\x02\x01\x09\
+\x04\0\x11device-descriptor\x03\0\x04\x04\0\x0ausb-device\x03\x01\x04\0\x0ddevic\
+e-handle\x03\x01\x01h\x06\x01p\x03\x01j\x01\x09\x01\x01\x01@\x01\x04self\x08\0\x0a\
+\x04\0![method]usb-device.configurations\x01\x0b\x01@\x01\x04self\x08\0\x05\x04\0\
+$[method]usb-device.device-descriptor\x01\x0c\x01i\x07\x01j\x01\x0d\x01\x01\x01@\
+\x01\x04self\x08\0\x0e\x04\0\x17[method]usb-device.open\x01\x0f\x01i\x06\x01p\x10\
+\x01@\0\0\x11\x04\0\x1c[static]usb-device.enumerate\x01\x12\x01h\x07\x01@\x01\x04\
+self\x13\x01\0\x04\0\x1b[method]device-handle.reset\x01\x14\x01j\x01}\x01\x01\x01\
+@\x01\x04self\x13\0\x15\x04\0*[method]device-handle.active-configuration\x01\x16\
+\x01@\x02\x04self\x13\x0dconfiguration}\x01\0\x04\0*[method]device-handle.select\
+-configuration\x01\x17\x01j\0\x01\x01\x01@\x02\x04self\x13\x09interface}\0\x18\x04\
+\0%[method]device-handle.claim-interface\x01\x19\x01@\x02\x04self\x13\x09interfa\
+ce}\x01\0\x04\0'[method]device-handle.release-interface\x01\x1a\x01@\x03\x04self\
+\x13\x09interface}\x07setting}\0\x18\x04\00[method]device-handle.select-alternat\
+e-interface\x01\x1b\x01p}\x01o\x02w\x1c\x01j\x01\x1d\x01\x01\x01@\x02\x04self\x13\
+\x08endpoint}\0\x1e\x04\0$[method]device-handle.read-interrupt\x01\x1f\x01j\x01w\
+\x01\x01\x01@\x03\x04self\x13\x08endpoint}\x04data\x1c\0\x20\x04\0%[method]devic\
+e-handle.write-interrupt\x01!\x01@\x03\x04self\x13\x08endpoint}\x08max-size{\0\x1e\
+\x04\0\x1f[method]device-handle.read-bulk\x01\"\x04\0\x20[method]device-handle.w\
+rite-bulk\x01!\x04\0&[method]device-handle.read-isochronous\x01\x1f\x04\0'[metho\
+d]device-handle.write-isochronous\x01!\x01@\x06\x04self\x13\x0crequest-type}\x07\
+request}\x05value{\x05index{\x08max-size{\0\x1e\x04\0\"[method]device-handle.rea\
+d-control\x01#\x01@\x06\x04self\x13\x0crequest-type}\x07request}\x05value{\x05in\
+dex{\x03buf\x1c\0\x20\x04\0#[method]device-handle.write-control\x01$\x03\x01\x17\
+component:usb/usb@0.2.0\x05\x0a\x02\x03\0\x02\x0ausb-device\x01B\x07\x02\x03\x02\
+\x01\x0b\x04\0\x0ausb-device\x03\0\0\x01i\x01\x01q\x03\x07pending\0\0\x09connect\
+ed\x01\x02\0\x0cdisconnected\x01\x02\0\x04\0\x17device-connection-event\x03\0\x03\
+\x01@\0\0\x04\x04\0\x06update\x01\x05\x03\x01\x1acomponent:usb/events@0.2.0\x05\x0c\
+\x04\x01(component:usb-component-wasi-stadia/root\x04\0\x0b\x0a\x01\0\x04root\x03\
+\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.202.0\x10wit-\
+bindgen-rust\x060.24.0";
 
 #[inline(never)]
 #[doc(hidden)]
