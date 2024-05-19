@@ -11,6 +11,8 @@ use crate::bindings::{
     Guest,
 };
 
+bindings::export!(Component with_types_in bindings);
+
 struct Component;
 
 impl Guest for Component {
