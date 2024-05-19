@@ -58,17 +58,30 @@ impl UsbDemoApp {
         })
     }
 
-    async fn start(&mut self) -> anyhow::Result<Result<(), String>> {
+    async fn start(&mut self) -> anyhow::Result<Result<(), ()>> {
         let data = USBHostWasiView::new()?;
         let mut store = Store::new(&self.engine, data);
 
-        self
-            .linker
-            .instantiate_async(&mut store, &self.component).await?
-            .get_typed_func::<(), (Result<(), String>,)>(&mut store, "run")?
-            .call_async(&mut store, ())
-            .await
-            .map(|result| result.0)
+        let input: Vec<wasmtime::component::Val> = vec![];
+        let mut output: Vec<wasmtime::component::Val> = vec![];
+
+        let (command, _instance) = wasmtime_wasi::bindings::Command::instantiate_async(&mut store, &self.component, &self.linker).await?;
+
+        command.wasi_cli_run().call_run(store).await
+
+        // let (command, _instance) = wasmtime_wasi::bindings::sync::Command::instantiate(&mut store, &self.component, &self.linker)?;
+
+        // command.wasi_cli_run().call_run(&mut store)?;
+
+        // self
+        //     .linker
+        //     .instantiate_async(&mut store, &self.component).await?
+        //     .get_func(&mut store, "").unwrap()
+        //     .call_async(&mut store, &input, &mut output)
+        //     .await
+        //     .map(|result| result);
+
+            // Ok(Ok(()))
     }
 }
 
@@ -80,5 +93,5 @@ async fn main() -> Result<()> {
     app
         .start()
         .await?
-        .map_err(|e| anyhow!(e))
+        .map_err(|_| anyhow!("Failed to run component."))
 }

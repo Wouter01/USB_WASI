@@ -2,54 +2,44 @@ mod bindings;
 
 use std::{num::Wrapping, time::{Duration, Instant}};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use bindings::component::usb::{usb::DeviceHandle, events::update, types::{Direction, TransferType}};
 use bitflags::bitflags;
 use tokio::{task::AbortHandle, time::sleep};
 
-use crate::bindings::{
-    component::usb::{usb::UsbDevice, events::DeviceConnectionEvent},
-    Guest,
-};
+use crate::bindings::component::usb::{usb::UsbDevice, events::DeviceConnectionEvent};
 
-bindings::export!(Component with_types_in bindings);
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> anyhow::Result<()> {
+    let mut process_task_aborthandle: Option<AbortHandle> = None;
 
-struct Component;
+    println!("Waiting for Stadia controller...");
 
-impl Guest for Component {
-    #[tokio::main(flavor = "current_thread")]
-    async fn run() -> Result<(), String> {
+    loop {
+        match update() {
+            DeviceConnectionEvent::Pending => sleep(Duration::from_secs(1)).await,
+            DeviceConnectionEvent::Connected(device) if device.is_stadia_device() => {
+                println!("Found Stadia Controller");
 
-        let mut process_task_aborthandle: Option<AbortHandle> = None;
+                let (handle, endpoint_address, endpoint_out_address) = setup_handle(device)?;
+                let task = tokio::spawn(async move {
+                    process_input_task_read_controller_state(handle, endpoint_address, endpoint_out_address).await
+                    // Self::process_input_task(handle, endpoint_address, endpoint_out_address).await
+                });
+                if let Some(handle) = process_task_aborthandle {
+                    handle.abort();
+                }
 
-        println!("Waiting for Stadia controller...");
-
-        loop {
-            match update() {
-                DeviceConnectionEvent::Pending => sleep(Duration::from_secs(1)).await,
-                DeviceConnectionEvent::Connected(device) if device.is_stadia_device() => {
-                    println!("Found Stadia Controller");
-
-                    let (handle, endpoint_address, endpoint_out_address) = Self::setup_handle(device)?;
-                    let task = tokio::spawn(async move {
-                        Self::process_input_task_read_controller_state(handle, endpoint_address, endpoint_out_address).await
-                        // Self::process_input_task(handle, endpoint_address, endpoint_out_address).await
-                    });
-                    if let Some(handle) = process_task_aborthandle {
-                        handle.abort();
-                    }
-
-                    process_task_aborthandle = Some(task.abort_handle());
-                },
-                DeviceConnectionEvent::Disconnected(device) if device.is_stadia_device() => {
-                    if let Some(handle) = process_task_aborthandle {
-                        handle.abort();
-                        println!("Device disconnected, stop watching.");
-                        process_task_aborthandle = None;
-                    }
-                },
-                _ => continue
-            }
+                process_task_aborthandle = Some(task.abort_handle());
+            },
+            DeviceConnectionEvent::Disconnected(device) if device.is_stadia_device() => {
+                if let Some(handle) = process_task_aborthandle {
+                    handle.abort();
+                    println!("Device disconnected, stop watching.");
+                    process_task_aborthandle = None;
+                }
+            },
+            _ => continue
         }
     }
 }
@@ -61,93 +51,89 @@ impl UsbDevice {
     }
 }
 
-impl Component {
-    fn setup_handle(device: UsbDevice) -> Result<(DeviceHandle, u8, u8), String> {
-        let configurations = device
-            .configurations()
-            .map_err(|e| e.message())?;
+fn setup_handle(device: UsbDevice) -> Result<(DeviceHandle, u8, u8)> {
+    let configurations = device
+        .configurations()?;
 
-        let configuration = configurations
-            .first()
-            .ok_or("Device has no configurations")?;
+    let configuration = configurations
+        .first()
+        .ok_or(anyhow!("Device has no configurations"))?;
 
-        let interface_descriptor = configuration
-            .interfaces
-            .iter()
-            .find(|i| i.number == 1)
-            .ok_or("Device has no interface with number 1")?;
+    let interface_descriptor = configuration
+        .interfaces
+        .iter()
+        .find(|i| i.number == 1)
+        .ok_or(anyhow!("Device has no interface with number 1"))?;
 
-        let endpoint = interface_descriptor
-            .endpoint_descriptors
-            .iter()
-            .find(|e| e.direction == Direction::In && e.transfer_type == TransferType::Interrupt)
-            .ok_or("No endpoint in interface with direction IN and transfer type Interrupt")?;
+    let endpoint = interface_descriptor
+        .endpoint_descriptors
+        .iter()
+        .find(|e| e.direction == Direction::In && e.transfer_type == TransferType::Interrupt)
+        .ok_or(anyhow!("No endpoint in interface with direction IN and transfer type Interrupt"))?;
 
-        let endpoint_out = interface_descriptor
-            .endpoint_descriptors
-            .iter()
-            .find(|e| e.direction == Direction::Out && e.transfer_type == TransferType::Interrupt)
-            .ok_or("No endpoint in interface with direction OUT and transfer type Interrupt")?;
+    let endpoint_out = interface_descriptor
+        .endpoint_descriptors
+        .iter()
+        .find(|e| e.direction == Direction::Out && e.transfer_type == TransferType::Interrupt)
+        .ok_or(anyhow!("No endpoint in interface with direction OUT and transfer type Interrupt"))?;
 
-        let handle = device
-            .open()
-            .map_err(|e| e.message())?;
+    let handle = device
+        .open()?;
 
-        handle.select_configuration(configuration.number);
-        handle.claim_interface(interface_descriptor.number);
+    handle.select_configuration(configuration.number);
+    handle.claim_interface(interface_descriptor.number)?;
 
-        println!("Connected to controller");
+    println!("Connected to controller");
 
-        Ok((handle, endpoint.address, endpoint_out.address))
+    Ok((handle, endpoint.address, endpoint_out.address))
+}
+
+/// Repeatedly set the rumble intensity of the controller from 0 to 255.
+async fn process_input_task_write_to_controller(handle: DeviceHandle, endpoint_out_address: u8) {
+    println!("Sending rumble data to controller...");
+
+    let mut intensity = Wrapping(0u8);
+    let now = Instant::now();
+
+    for _ in 0..10000 {
+        intensity += 1;
+        let num = intensity.0;
+
+        let rumble_data: [u8; 5] = [0x05, num, num, num, num];
+        _ = handle.write_interrupt(endpoint_out_address, &rumble_data);
     }
 
-    /// Repeatedly set the rumble intensity of the controller from 0 to 255.
-    async fn process_input_task_write_to_controller(handle: DeviceHandle, endpoint_out_address: u8) {
-        println!("Sending rumble data to controller...");
+    let elapsed_time = now.elapsed();
+    println!("Writing data took {} milliseconds.", elapsed_time.as_millis());
+}
 
-        let mut intensity = Wrapping(0u8);
+/// Read and print out the controller state and react to updates.
+/// Set the rumble intensity based on the pressure on the shoulder triggers.
+async fn process_input_task_read_controller_state(handle: DeviceHandle, endpoint_address: u8, endpoint_out_address: u8) {
+    println!("Waiting for controller input...");
+
+    loop {
         let now = Instant::now();
+        // Read state of controller.
+        let data = handle
+            .read_interrupt(endpoint_address)
+            .map_err(|e| e.to_string());
 
-        for _ in 0..10000 {
-            intensity += 1;
-            let num = intensity.0;
+        let elapsed_time = now.elapsed();
+        println!("Reading state took {} milliseconds.", elapsed_time.as_millis());
 
-            let rumble_data: [u8; 5] = [0x05, num, num, num, num];
+        if let Ok(data) = data {
+            let stadia_state = StadiaState::new(data.1);
+            println!("{:?}", stadia_state);
+
+            // Let controller vibrate at intensity of pressure of shoulder trigger.
+            // When a shoulder trigger is pushed harder, the controller will rumble harder at that side.
+            // Info about rumble data: https://github.com/FIX94/Nintendont/issues/1080
+            let rumble_data: [u8; 5] = [0x05, stadia_state.l2_position, stadia_state.l2_position, stadia_state.r2_position, stadia_state.r2_position];
             _ = handle.write_interrupt(endpoint_out_address, &rumble_data);
         }
 
-        let elapsed_time = now.elapsed();
-        println!("Writing data took {} milliseconds.", elapsed_time.as_millis());
-    }
-
-    /// Read and print out the controller state and react to updates.
-    /// Set the rumble intensity based on the pressure on the shoulder triggers.
-    async fn process_input_task_read_controller_state(handle: DeviceHandle, endpoint_address: u8, endpoint_out_address: u8) {
-        println!("Waiting for controller input...");
-
-        loop {
-            let now = Instant::now();
-            // Read state of controller.
-            let data = handle
-                .read_interrupt(endpoint_address)
-                .map_err(|e| e.to_string());
-
-            let elapsed_time = now.elapsed();
-            println!("Reading state took {} milliseconds.", elapsed_time.as_millis());
-
-            if let Ok(data) = data {
-                let stadia_state = StadiaState::new(data.1);
-                println!("{:?}", stadia_state);
-
-                // Let controller vibrate at intensity of pressure of shoulder trigger.
-                // When a shoulder trigger is pushed harder, the controller will rumble harder at that side.
-                // Info about rumble data: https://github.com/FIX94/Nintendont/issues/1080
-                let rumble_data: [u8; 5] = [0x05, stadia_state.l2_position, stadia_state.l2_position, stadia_state.r2_position, stadia_state.r2_position];
-                _ = handle.write_interrupt(endpoint_out_address, &rumble_data);
-            }
-
-            tokio::task::yield_now().await;
-        }
+        tokio::task::yield_now().await;
     }
 }
 
@@ -226,8 +212,4 @@ bitflags! {
         const options_button     = 0b1000000 << 8;
         const right_stick_button = 0b10000000 << 8;
     }
-}
-
-fn main() {
-    println!("Call run instead");
 }

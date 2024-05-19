@@ -5,6 +5,4 @@ world root {
 	import component:usb/usb@0.2.0;
 	import component:usb/events@0.2.0;
 	import component:usb/descriptors@0.2.0;
-
-	export run: func() -> result<_, string>;
 }
