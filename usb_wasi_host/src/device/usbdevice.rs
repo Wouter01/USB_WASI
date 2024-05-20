@@ -1,5 +1,6 @@
 use crate::bindings::component::usb as world;
 use crate::usb_host_wasi_view::USBHostWasiView;
+use crate::{AllowedUSBDevices, USBDeviceIdentifier};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use rusb::{ConfigDescriptor, DeviceHandle as RusbDeviceHandle, Language, UsbContext};
@@ -28,6 +29,14 @@ impl USBDevice {
             .ok_or(Error::msg("No language to read configuration"))?;
 
         Ok(*language)
+    }
+
+    pub fn identifier(&self) -> Result<USBDeviceIdentifier> {
+        let descriptor = self.device.device_descriptor()?;
+        Ok(USBDeviceIdentifier {
+            vendor_id: descriptor.vendor_id(),
+            product_id: descriptor.product_id()
+        })
     }
 }
 
@@ -193,13 +202,20 @@ impl HostUsbDevice for USBHostWasiView {
     async fn enumerate(&mut self) -> Result<Vec<Resource<USBDevice>>> {
         let context = rusb::Context::new();
 
+        let allowed_devices: AllowedUSBDevices = self.allowed_devices.to_owned();
+
         context?
             .devices()?
             .iter()
+            .map(|device| USBDevice { device })
+            .filter(|device| {
+                device.identifier()
+                    .map(|device| allowed_devices.is_allowed(&device))
+                    .unwrap_or(false)
+            })
             .map(|device| {
-                self
-                    .table()
-                    .push(USBDevice { device })
+                self.table()
+                    .push(device)
                     .map_err(Error::from)
             })
             .collect()

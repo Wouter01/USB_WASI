@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use clap::Parser;
 use usb_host_wasi_view::USBHostWasiView;
 use wasmtime_wasi::bindings::Command;
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 use wasmtime::{component::*, Config, Engine, Store};
 
 use crate::bindings::Imports;
@@ -30,6 +30,51 @@ struct UsbDemoAppParser {
     /// The path to the guest component.
     #[clap(value_name = "COMPONENT_PATH")]
     component_path: PathBuf,
+
+    /// Comma-separated list of USB devices to allow (in hex format: vendor_id:product_id, e.g. 12AB:34CD).
+    #[clap(long, value_name = "USB_DEVICES", use_value_delimiter = true)]
+    usb_devices: Vec<USBDeviceIdentifier>,
+
+    /// Use a denylist for USB devices instead of an allowlist.
+    #[clap(long)]
+    usb_use_denylist: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct USBDeviceIdentifier {
+    vendor_id: u16,
+    product_id: u16
+}
+
+impl FromStr for USBDeviceIdentifier {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split(':').collect();
+        if parts.len() != 2 {
+            return Err("Invalid format. Expected vendor_id:product_id");
+        }
+
+        let vendor_id = u16::from_str_radix(parts[0], 16).map_err(|_| "Invalid vendor_id")?;
+        let product_id = u16::from_str_radix(parts[1], 16).map_err(|_| "Invalid product_id")?;
+
+        Ok(Self { vendor_id, product_id })
+    }
+}
+
+#[derive(Debug, Clone)]
+enum AllowedUSBDevices {
+    Allowed(Vec<USBDeviceIdentifier>),
+    Denied(Vec<USBDeviceIdentifier>)
+}
+
+impl AllowedUSBDevices {
+    fn is_allowed(&self, device: &USBDeviceIdentifier) -> bool {
+        match self {
+            Self::Allowed(devices) => devices.contains(device),
+            Self::Denied(devices) => !devices.contains(device)
+        }
+    }
 }
 
 struct UsbDemoApp {
@@ -59,8 +104,8 @@ impl UsbDemoApp {
         })
     }
 
-    async fn start(&mut self) -> anyhow::Result<Result<(), ()>> {
-        let data = USBHostWasiView::new()?;
+    async fn start(&mut self, allowed_devices: AllowedUSBDevices) -> anyhow::Result<Result<(), ()>> {
+        let data = USBHostWasiView::new(allowed_devices)?;
         let mut store = Store::new(&self.engine, data);
 
         let (command, _) = Command::instantiate_async(&mut store, &self.component, &self.linker).await?;
@@ -74,6 +119,12 @@ async fn main() -> Result<()> {
     let parsed = UsbDemoAppParser::parse();
     let mut app = UsbDemoApp::new(parsed.component_path)?;
 
-    app.start().await?
+    let allowed_devices = if parsed.usb_use_denylist {
+        AllowedUSBDevices::Denied(parsed.usb_devices)
+    } else {
+        AllowedUSBDevices::Allowed(parsed.usb_devices)
+    };
+
+    app.start(allowed_devices).await?
         .map_err(|_| anyhow!("Failed to run component."))
 }

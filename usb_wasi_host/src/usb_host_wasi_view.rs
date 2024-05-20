@@ -5,7 +5,8 @@ use async_trait::async_trait;
 use tokio::sync::mpsc::error::TryRecvError;
 use wasmtime_wasi::{DirPerms, FilePerms, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
-use crate::events;
+use crate::bindings::__with_name1;
+use crate::{events, AllowedUSBDevices, USBDeviceIdentifier};
 use crate::bindings::component::usb;
 use crate::bindings::component::usb::events::{Host as EventsHost, DeviceConnectionEvent as WasmDeviceConnectionEvent};
 
@@ -15,11 +16,12 @@ pub(crate) struct USBHostWasiView {
     updates: tokio::sync::mpsc::Receiver<events::DeviceConnectionEvent>,
     registration: rusb::Registration<rusb::Context>,
     task: tokio::task::JoinHandle<()>,
-    pub(crate) active_device_handles: HashSet<u8>
+    pub(crate) active_device_handles: HashSet<u8>,
+    pub(crate) allowed_devices: AllowedUSBDevices
 }
 
 impl USBHostWasiView {
-    pub fn new() -> Result<Self> {
+    pub fn new(allowed_devices: AllowedUSBDevices) -> Result<Self> {
         let table = ResourceTable::new();
 
         let ctx = WasiCtxBuilder::new()
@@ -28,7 +30,15 @@ impl USBHostWasiView {
             .build();
 
         let (receiver, registration, task) = events::device_connection_updates()?;
-        Ok(Self { table, ctx, updates: receiver, registration, task, active_device_handles: HashSet::new() })
+        Ok(Self {
+            table,
+            ctx,
+            updates: receiver,
+            registration,
+            task,
+            active_device_handles: HashSet::new(),
+            allowed_devices
+        })
     }
 }
 
@@ -50,17 +60,19 @@ impl usb::types::Host for USBHostWasiView {}
 impl EventsHost for USBHostWasiView {
     async fn update(&mut self) -> Result<WasmDeviceConnectionEvent> {
         let mapped = match self.updates.try_recv() {
-            Ok(events::DeviceConnectionEvent::Connected(device)) => {
+
+            Ok(events::DeviceConnectionEvent::Connected(device))
+                if device.identifier().map(|i| self.allowed_devices.is_allowed(&i)).unwrap_or(false) => {
                 let d = self.table().push(device)?;
                 WasmDeviceConnectionEvent::Connected(d)
             },
 
-            // TODO: Should this drop the device instead of creating a new one?
-            Ok(events::DeviceConnectionEvent::Disconnected(device)) => {
+            Ok(events::DeviceConnectionEvent::Disconnected(device)) if device.identifier().map(|i| self.allowed_devices.is_allowed(&i)).unwrap_or(false) => {
                 let d = self.table().push(device)?;
                 WasmDeviceConnectionEvent::Disconnected(d)
             },
-            Err(TryRecvError::Empty | TryRecvError::Disconnected) => WasmDeviceConnectionEvent::Pending
+
+            _ => WasmDeviceConnectionEvent::Pending
         };
 
         Ok(mapped)
