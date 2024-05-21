@@ -3,6 +3,9 @@ set -e
 # cargo component update
 # cargo component build
 
+echo building mass storage...
+cargo component build --release -p usb-mass-storage-native
+
 echo building stadia...
 cargo component build -p usb-component-wasi-stadia
 

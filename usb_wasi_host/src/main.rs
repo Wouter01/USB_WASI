@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use clap::Parser;
 use usb_host_wasi_view::USBHostWasiView;
 use wasmtime_wasi::bindings::Command;
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, process::exit, str::FromStr};
 use wasmtime::{component::*, Config, Engine, Store};
 
 use crate::bindings::Imports;
@@ -126,5 +126,7 @@ async fn main() -> Result<()> {
     };
 
     app.start(allowed_devices).await?
-        .map_err(|_| anyhow!("Failed to run component."))
+        .map_err(|_| anyhow!("Failed to run component."))?;
+
+    exit(0);
 }

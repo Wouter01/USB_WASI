@@ -409,6 +409,7 @@ pub mod component {
                 super::super::super::component::usb::descriptors::ConfigurationDescriptor;
             pub type DeviceDescriptor =
                 super::super::super::component::usb::descriptors::DeviceDescriptor;
+            pub type Duration = u64;
 
             #[derive(Debug)]
             #[repr(transparent)]
@@ -838,20 +839,40 @@ pub mod component {
             }
             impl DeviceHandle {
                 #[allow(unused_unsafe, clippy::all)]
-                pub fn reset(&self) {
+                pub fn reset(&self) -> Result<(), DeviceHandleError> {
                     unsafe {
+                        #[repr(align(1))]
+                        struct RetArea([::core::mem::MaybeUninit<u8>; 2]);
+                        let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 2]);
+                        let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
                         #[link(wasm_import_module = "component:usb/usb@0.2.0")]
                         extern "C" {
                             #[link_name = "[method]device-handle.reset"]
-                            fn wit_import(_: i32);
+                            fn wit_import(_: i32, _: *mut u8);
                         }
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        fn wit_import(_: i32) {
+                        fn wit_import(_: i32, _: *mut u8) {
                             unreachable!()
                         }
-                        wit_import((self).handle() as i32);
+                        wit_import((self).handle() as i32, ptr0);
+                        let l1 = i32::from(*ptr0.add(0).cast::<u8>());
+                        match l1 {
+                            0 => {
+                                let e = ();
+                                Ok(e)
+                            }
+                            1 => {
+                                let e = {
+                                    let l2 = i32::from(*ptr0.add(1).cast::<u8>());
+
+                                    super::super::super::component::usb::types::DeviceHandleError::_lift(l2 as u8)
+                                };
+                                Err(e)
+                            }
+                            _ => _rt::invalid_enum_discriminant(),
+                        }
                     }
                 }
             }
@@ -900,20 +921,43 @@ pub mod component {
             }
             impl DeviceHandle {
                 #[allow(unused_unsafe, clippy::all)]
-                pub fn select_configuration(&self, configuration: u8) {
+                pub fn select_configuration(
+                    &self,
+                    configuration: u8,
+                ) -> Result<(), DeviceHandleError> {
                     unsafe {
+                        #[repr(align(1))]
+                        struct RetArea([::core::mem::MaybeUninit<u8>; 2]);
+                        let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 2]);
+                        let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
                         #[cfg(target_arch = "wasm32")]
                         #[link(wasm_import_module = "component:usb/usb@0.2.0")]
                         extern "C" {
                             #[link_name = "[method]device-handle.select-configuration"]
-                            fn wit_import(_: i32, _: i32);
+                            fn wit_import(_: i32, _: i32, _: *mut u8);
                         }
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        fn wit_import(_: i32, _: i32) {
+                        fn wit_import(_: i32, _: i32, _: *mut u8) {
                             unreachable!()
                         }
-                        wit_import((self).handle() as i32, _rt::as_i32(&configuration));
+                        wit_import((self).handle() as i32, _rt::as_i32(&configuration), ptr0);
+                        let l1 = i32::from(*ptr0.add(0).cast::<u8>());
+                        match l1 {
+                            0 => {
+                                let e = ();
+                                Ok(e)
+                            }
+                            1 => {
+                                let e = {
+                                    let l2 = i32::from(*ptr0.add(1).cast::<u8>());
+
+                                    super::super::super::component::usb::types::DeviceHandleError::_lift(l2 as u8)
+                                };
+                                Err(e)
+                            }
+                            _ => _rt::invalid_enum_discriminant(),
+                        }
                     }
                 }
             }
@@ -1034,6 +1078,7 @@ pub mod component {
                 pub fn read_interrupt(
                     &self,
                     endpoint: u8,
+                    timeout: Duration,
                 ) -> Result<(u64, _rt::Vec<u8>), DeviceHandleError> {
                     unsafe {
                         #[repr(align(8))]
@@ -1044,14 +1089,19 @@ pub mod component {
                         #[link(wasm_import_module = "component:usb/usb@0.2.0")]
                         extern "C" {
                             #[link_name = "[method]device-handle.read-interrupt"]
-                            fn wit_import(_: i32, _: i32, _: *mut u8);
+                            fn wit_import(_: i32, _: i32, _: i64, _: *mut u8);
                         }
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        fn wit_import(_: i32, _: i32, _: *mut u8) {
+                        fn wit_import(_: i32, _: i32, _: i64, _: *mut u8) {
                             unreachable!()
                         }
-                        wit_import((self).handle() as i32, _rt::as_i32(&endpoint), ptr0);
+                        wit_import(
+                            (self).handle() as i32,
+                            _rt::as_i32(&endpoint),
+                            _rt::as_i64(timeout),
+                            ptr0,
+                        );
                         let l1 = i32::from(*ptr0.add(0).cast::<u8>());
                         match l1 {
                             0 => {
@@ -1084,6 +1134,7 @@ pub mod component {
                     &self,
                     endpoint: u8,
                     data: &[u8],
+                    timeout: Duration,
                 ) -> Result<u64, DeviceHandleError> {
                     unsafe {
                         #[repr(align(8))]
@@ -1097,11 +1148,11 @@ pub mod component {
                         #[link(wasm_import_module = "component:usb/usb@0.2.0")]
                         extern "C" {
                             #[link_name = "[method]device-handle.write-interrupt"]
-                            fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: *mut u8);
+                            fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: i64, _: *mut u8);
                         }
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: *mut u8) {
+                        fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: i64, _: *mut u8) {
                             unreachable!()
                         }
                         wit_import(
@@ -1109,6 +1160,7 @@ pub mod component {
                             _rt::as_i32(&endpoint),
                             ptr0.cast_mut(),
                             len0,
+                            _rt::as_i64(timeout),
                             ptr1,
                         );
                         let l2 = i32::from(*ptr1.add(0).cast::<u8>());
@@ -1139,7 +1191,8 @@ pub mod component {
                 pub fn read_bulk(
                     &self,
                     endpoint: u8,
-                    max_size: u16,
+                    max_size: u64,
+                    timeout: Duration,
                 ) -> Result<(u64, _rt::Vec<u8>), DeviceHandleError> {
                     unsafe {
                         #[repr(align(8))]
@@ -1150,17 +1203,18 @@ pub mod component {
                         #[link(wasm_import_module = "component:usb/usb@0.2.0")]
                         extern "C" {
                             #[link_name = "[method]device-handle.read-bulk"]
-                            fn wit_import(_: i32, _: i32, _: i32, _: *mut u8);
+                            fn wit_import(_: i32, _: i32, _: i64, _: i64, _: *mut u8);
                         }
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        fn wit_import(_: i32, _: i32, _: i32, _: *mut u8) {
+                        fn wit_import(_: i32, _: i32, _: i64, _: i64, _: *mut u8) {
                             unreachable!()
                         }
                         wit_import(
                             (self).handle() as i32,
                             _rt::as_i32(&endpoint),
-                            _rt::as_i32(&max_size),
+                            _rt::as_i64(&max_size),
+                            _rt::as_i64(timeout),
                             ptr0,
                         );
                         let l1 = i32::from(*ptr0.add(0).cast::<u8>());
@@ -1195,6 +1249,7 @@ pub mod component {
                     &self,
                     endpoint: u8,
                     data: &[u8],
+                    timeout: Duration,
                 ) -> Result<u64, DeviceHandleError> {
                     unsafe {
                         #[repr(align(8))]
@@ -1208,11 +1263,11 @@ pub mod component {
                         #[link(wasm_import_module = "component:usb/usb@0.2.0")]
                         extern "C" {
                             #[link_name = "[method]device-handle.write-bulk"]
-                            fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: *mut u8);
+                            fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: i64, _: *mut u8);
                         }
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: *mut u8) {
+                        fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: i64, _: *mut u8) {
                             unreachable!()
                         }
                         wit_import(
@@ -1220,6 +1275,7 @@ pub mod component {
                             _rt::as_i32(&endpoint),
                             ptr0.cast_mut(),
                             len0,
+                            _rt::as_i64(timeout),
                             ptr1,
                         );
                         let l2 = i32::from(*ptr1.add(0).cast::<u8>());
@@ -1250,6 +1306,7 @@ pub mod component {
                 pub fn read_isochronous(
                     &self,
                     endpoint: u8,
+                    timeout: Duration,
                 ) -> Result<(u64, _rt::Vec<u8>), DeviceHandleError> {
                     unsafe {
                         #[repr(align(8))]
@@ -1260,14 +1317,19 @@ pub mod component {
                         #[link(wasm_import_module = "component:usb/usb@0.2.0")]
                         extern "C" {
                             #[link_name = "[method]device-handle.read-isochronous"]
-                            fn wit_import(_: i32, _: i32, _: *mut u8);
+                            fn wit_import(_: i32, _: i32, _: i64, _: *mut u8);
                         }
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        fn wit_import(_: i32, _: i32, _: *mut u8) {
+                        fn wit_import(_: i32, _: i32, _: i64, _: *mut u8) {
                             unreachable!()
                         }
-                        wit_import((self).handle() as i32, _rt::as_i32(&endpoint), ptr0);
+                        wit_import(
+                            (self).handle() as i32,
+                            _rt::as_i32(&endpoint),
+                            _rt::as_i64(timeout),
+                            ptr0,
+                        );
                         let l1 = i32::from(*ptr0.add(0).cast::<u8>());
                         match l1 {
                             0 => {
@@ -1300,6 +1362,7 @@ pub mod component {
                     &self,
                     endpoint: u8,
                     data: &[u8],
+                    timeout: Duration,
                 ) -> Result<u64, DeviceHandleError> {
                     unsafe {
                         #[repr(align(8))]
@@ -1313,11 +1376,11 @@ pub mod component {
                         #[link(wasm_import_module = "component:usb/usb@0.2.0")]
                         extern "C" {
                             #[link_name = "[method]device-handle.write-isochronous"]
-                            fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: *mut u8);
+                            fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: i64, _: *mut u8);
                         }
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: *mut u8) {
+                        fn wit_import(_: i32, _: i32, _: *mut u8, _: usize, _: i64, _: *mut u8) {
                             unreachable!()
                         }
                         wit_import(
@@ -1325,6 +1388,7 @@ pub mod component {
                             _rt::as_i32(&endpoint),
                             ptr0.cast_mut(),
                             len0,
+                            _rt::as_i64(timeout),
                             ptr1,
                         );
                         let l2 = i32::from(*ptr1.add(0).cast::<u8>());
@@ -1359,6 +1423,7 @@ pub mod component {
                     value: u16,
                     index: u16,
                     max_size: u16,
+                    timeout: Duration,
                 ) -> Result<(u64, _rt::Vec<u8>), DeviceHandleError> {
                     unsafe {
                         #[repr(align(8))]
@@ -1376,12 +1441,22 @@ pub mod component {
                                 _: i32,
                                 _: i32,
                                 _: i32,
+                                _: i64,
                                 _: *mut u8,
                             );
                         }
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        fn wit_import(_: i32, _: i32, _: i32, _: i32, _: i32, _: i32, _: *mut u8) {
+                        fn wit_import(
+                            _: i32,
+                            _: i32,
+                            _: i32,
+                            _: i32,
+                            _: i32,
+                            _: i32,
+                            _: i64,
+                            _: *mut u8,
+                        ) {
                             unreachable!()
                         }
                         wit_import(
@@ -1391,6 +1466,7 @@ pub mod component {
                             _rt::as_i32(&value),
                             _rt::as_i32(&index),
                             _rt::as_i32(&max_size),
+                            _rt::as_i64(timeout),
                             ptr0,
                         );
                         let l1 = i32::from(*ptr0.add(0).cast::<u8>());
@@ -1428,6 +1504,7 @@ pub mod component {
                     value: u16,
                     index: u16,
                     buf: &[u8],
+                    timeout: Duration,
                 ) -> Result<u64, DeviceHandleError> {
                     unsafe {
                         #[repr(align(8))]
@@ -1449,6 +1526,7 @@ pub mod component {
                                 _: i32,
                                 _: *mut u8,
                                 _: usize,
+                                _: i64,
                                 _: *mut u8,
                             );
                         }
@@ -1462,6 +1540,7 @@ pub mod component {
                             _: i32,
                             _: *mut u8,
                             _: usize,
+                            _: i64,
                             _: *mut u8,
                         ) {
                             unreachable!()
@@ -1474,6 +1553,7 @@ pub mod component {
                             _rt::as_i32(&index),
                             ptr0.cast_mut(),
                             len0,
+                            _rt::as_i64(timeout),
                             ptr1,
                         );
                         let l2 = i32::from(*ptr1.add(0).cast::<u8>());
@@ -1761,6 +1841,34 @@ mod _rt {
             self as i32
         }
     }
+
+    pub fn as_i64<T: AsI64>(t: T) -> i64 {
+        t.as_i64()
+    }
+
+    pub trait AsI64 {
+        fn as_i64(self) -> i64;
+    }
+
+    impl<'a, T: Copy + AsI64> AsI64 for &'a T {
+        fn as_i64(self) -> i64 {
+            (*self).as_i64()
+        }
+    }
+
+    impl AsI64 for i64 {
+        #[inline]
+        fn as_i64(self) -> i64 {
+            self as i64
+        }
+    }
+
+    impl AsI64 for u64 {
+        #[inline]
+        fn as_i64(self) -> i64 {
+            self as i64
+        }
+    }
     extern crate alloc as alloc_crate;
     pub use alloc_crate::alloc;
 }
@@ -1768,8 +1876,8 @@ mod _rt {
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.24.0:root:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2941] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x82\x16\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3002] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xbf\x16\x01A\x02\x01\
 A\x11\x01B\x0c\x01m\x0e\x02io\x0dinvalid-param\x06access\x09no-device\x09not-fou\
 nd\x04busy\x07timeout\x08overflow\x04pipe\x0binterrupted\x06no-mem\x0dnot-suppor\
 ted\x0ebad-descriptor\x05other\x04\0\x13device-handle-error\x03\0\0\x01m\x02\x02\
@@ -1795,38 +1903,39 @@ max-packet-size}\x19manufacturer-string-index\x0c\x14product-string-index\x0c\x1
 serial-number-string-index\x0c\x12num-configurations}\x04\0\x11device-descriptor\
 \x03\0\x13\x03\x01\x1fcomponent:usb/descriptors@0.2.0\x05\x06\x02\x03\0\0\x13dev\
 ice-handle-error\x02\x03\0\x01\x18configuration-descriptor\x02\x03\0\x01\x11devi\
-ce-descriptor\x01B7\x02\x03\x02\x01\x07\x04\0\x13device-handle-error\x03\0\0\x02\
+ce-descriptor\x01B9\x02\x03\x02\x01\x07\x04\0\x13device-handle-error\x03\0\0\x02\
 \x03\x02\x01\x08\x04\0\x18configuration-descriptor\x03\0\x02\x02\x03\x02\x01\x09\
-\x04\0\x11device-descriptor\x03\0\x04\x04\0\x0ausb-device\x03\x01\x04\0\x0ddevic\
-e-handle\x03\x01\x01h\x06\x01p\x03\x01j\x01\x09\x01\x01\x01@\x01\x04self\x08\0\x0a\
-\x04\0![method]usb-device.configurations\x01\x0b\x01@\x01\x04self\x08\0\x05\x04\0\
-$[method]usb-device.device-descriptor\x01\x0c\x01i\x07\x01j\x01\x0d\x01\x01\x01@\
-\x01\x04self\x08\0\x0e\x04\0\x17[method]usb-device.open\x01\x0f\x01i\x06\x01p\x10\
-\x01@\0\0\x11\x04\0\x1c[static]usb-device.enumerate\x01\x12\x01h\x07\x01@\x01\x04\
-self\x13\x01\0\x04\0\x1b[method]device-handle.reset\x01\x14\x01j\x01}\x01\x01\x01\
-@\x01\x04self\x13\0\x15\x04\0*[method]device-handle.active-configuration\x01\x16\
-\x01@\x02\x04self\x13\x0dconfiguration}\x01\0\x04\0*[method]device-handle.select\
--configuration\x01\x17\x01j\0\x01\x01\x01@\x02\x04self\x13\x09interface}\0\x18\x04\
-\0%[method]device-handle.claim-interface\x01\x19\x01@\x02\x04self\x13\x09interfa\
-ce}\x01\0\x04\0'[method]device-handle.release-interface\x01\x1a\x01@\x03\x04self\
-\x13\x09interface}\x07setting}\0\x18\x04\00[method]device-handle.select-alternat\
-e-interface\x01\x1b\x01p}\x01o\x02w\x1c\x01j\x01\x1d\x01\x01\x01@\x02\x04self\x13\
-\x08endpoint}\0\x1e\x04\0$[method]device-handle.read-interrupt\x01\x1f\x01j\x01w\
-\x01\x01\x01@\x03\x04self\x13\x08endpoint}\x04data\x1c\0\x20\x04\0%[method]devic\
-e-handle.write-interrupt\x01!\x01@\x03\x04self\x13\x08endpoint}\x08max-size{\0\x1e\
-\x04\0\x1f[method]device-handle.read-bulk\x01\"\x04\0\x20[method]device-handle.w\
-rite-bulk\x01!\x04\0&[method]device-handle.read-isochronous\x01\x1f\x04\0'[metho\
-d]device-handle.write-isochronous\x01!\x01@\x06\x04self\x13\x0crequest-type}\x07\
-request}\x05value{\x05index{\x08max-size{\0\x1e\x04\0\"[method]device-handle.rea\
-d-control\x01#\x01@\x06\x04self\x13\x0crequest-type}\x07request}\x05value{\x05in\
-dex{\x03buf\x1c\0\x20\x04\0#[method]device-handle.write-control\x01$\x03\x01\x17\
-component:usb/usb@0.2.0\x05\x0a\x02\x03\0\x02\x0ausb-device\x01B\x07\x02\x03\x02\
-\x01\x0b\x04\0\x0ausb-device\x03\0\0\x01i\x01\x01q\x03\x07pending\0\0\x09connect\
-ed\x01\x02\0\x0cdisconnected\x01\x02\0\x04\0\x17device-connection-event\x03\0\x03\
-\x01@\0\0\x04\x04\0\x06update\x01\x05\x03\x01\x1acomponent:usb/events@0.2.0\x05\x0c\
-\x04\x01(component:usb-component-wasi-stadia/root\x04\0\x0b\x0a\x01\0\x04root\x03\
-\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.202.0\x10wit-\
-bindgen-rust\x060.24.0";
+\x04\0\x11device-descriptor\x03\0\x04\x01w\x04\0\x08duration\x03\0\x06\x04\0\x0a\
+usb-device\x03\x01\x04\0\x0ddevice-handle\x03\x01\x01h\x08\x01p\x03\x01j\x01\x0b\
+\x01\x01\x01@\x01\x04self\x0a\0\x0c\x04\0![method]usb-device.configurations\x01\x0d\
+\x01@\x01\x04self\x0a\0\x05\x04\0$[method]usb-device.device-descriptor\x01\x0e\x01\
+i\x09\x01j\x01\x0f\x01\x01\x01@\x01\x04self\x0a\0\x10\x04\0\x17[method]usb-devic\
+e.open\x01\x11\x01i\x08\x01p\x12\x01@\0\0\x13\x04\0\x1c[static]usb-device.enumer\
+ate\x01\x14\x01h\x09\x01j\0\x01\x01\x01@\x01\x04self\x15\0\x16\x04\0\x1b[method]\
+device-handle.reset\x01\x17\x01j\x01}\x01\x01\x01@\x01\x04self\x15\0\x18\x04\0*[\
+method]device-handle.active-configuration\x01\x19\x01@\x02\x04self\x15\x0dconfig\
+uration}\0\x16\x04\0*[method]device-handle.select-configuration\x01\x1a\x01@\x02\
+\x04self\x15\x09interface}\0\x16\x04\0%[method]device-handle.claim-interface\x01\
+\x1b\x01@\x02\x04self\x15\x09interface}\x01\0\x04\0'[method]device-handle.releas\
+e-interface\x01\x1c\x01@\x03\x04self\x15\x09interface}\x07setting}\0\x16\x04\00[\
+method]device-handle.select-alternate-interface\x01\x1d\x01p}\x01o\x02w\x1e\x01j\
+\x01\x1f\x01\x01\x01@\x03\x04self\x15\x08endpoint}\x07timeout\x07\0\x20\x04\0$[m\
+ethod]device-handle.read-interrupt\x01!\x01j\x01w\x01\x01\x01@\x04\x04self\x15\x08\
+endpoint}\x04data\x1e\x07timeout\x07\0\"\x04\0%[method]device-handle.write-inter\
+rupt\x01#\x01@\x04\x04self\x15\x08endpoint}\x08max-sizew\x07timeout\x07\0\x20\x04\
+\0\x1f[method]device-handle.read-bulk\x01$\x04\0\x20[method]device-handle.write-\
+bulk\x01#\x04\0&[method]device-handle.read-isochronous\x01!\x04\0'[method]device\
+-handle.write-isochronous\x01#\x01@\x07\x04self\x15\x0crequest-type}\x07request}\
+\x05value{\x05index{\x08max-size{\x07timeout\x07\0\x20\x04\0\"[method]device-han\
+dle.read-control\x01%\x01@\x07\x04self\x15\x0crequest-type}\x07request}\x05value\
+{\x05index{\x03buf\x1e\x07timeout\x07\0\"\x04\0#[method]device-handle.write-cont\
+rol\x01&\x03\x01\x17component:usb/usb@0.2.0\x05\x0a\x02\x03\0\x02\x0ausb-device\x01\
+B\x07\x02\x03\x02\x01\x0b\x04\0\x0ausb-device\x03\0\0\x01i\x01\x01q\x03\x07pendi\
+ng\0\0\x09connected\x01\x02\0\x0cdisconnected\x01\x02\0\x04\0\x17device-connecti\
+on-event\x03\0\x03\x01@\0\0\x04\x04\0\x06update\x01\x05\x03\x01\x1acomponent:usb\
+/events@0.2.0\x05\x0c\x04\x01(component:usb-component-wasi-stadia/root\x04\0\x0b\
+\x0a\x01\0\x04root\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-compon\
+ent\x070.202.0\x10wit-bindgen-rust\x060.24.0";
 
 #[inline(never)]
 #[doc(hidden)]

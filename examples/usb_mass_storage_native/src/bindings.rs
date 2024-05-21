@@ -1876,8 +1876,8 @@ mod _rt {
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.24.0:root:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 3002] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xbf\x16\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2993] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xb6\x16\x01A\x02\x01\
 A\x11\x01B\x0c\x01m\x0e\x02io\x0dinvalid-param\x06access\x09no-device\x09not-fou\
 nd\x04busy\x07timeout\x08overflow\x04pipe\x0binterrupted\x06no-mem\x0dnot-suppor\
 ted\x0ebad-descriptor\x05other\x04\0\x13device-handle-error\x03\0\0\x01m\x02\x02\
@@ -1933,9 +1933,9 @@ rol\x01&\x03\x01\x17component:usb/usb@0.2.0\x05\x0a\x02\x03\0\x02\x0ausb-device\
 B\x07\x02\x03\x02\x01\x0b\x04\0\x0ausb-device\x03\0\0\x01i\x01\x01q\x03\x07pendi\
 ng\0\0\x09connected\x01\x02\0\x0cdisconnected\x01\x02\0\x04\0\x17device-connecti\
 on-event\x03\0\x03\x01@\0\0\x04\x04\0\x06update\x01\x05\x03\x01\x1acomponent:usb\
-/events@0.2.0\x05\x0c\x04\x01(component:usb-component-wasi-stadia/root\x04\0\x0b\
-\x0a\x01\0\x04root\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-compon\
-ent\x070.202.0\x10wit-bindgen-rust\x060.24.0";
+/events@0.2.0\x05\x0c\x04\x01\x1fcomponent:usb-mass-storage/root\x04\0\x0b\x0a\x01\
+\0\x04root\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070\
+.202.0\x10wit-bindgen-rust\x060.24.0";
 
 #[inline(never)]
 #[doc(hidden)]

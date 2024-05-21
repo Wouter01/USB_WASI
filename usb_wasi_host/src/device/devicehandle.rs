@@ -25,13 +25,14 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(())
     }
 
-    async fn reset(&mut self, handle: Resource<DeviceHandle>) -> Result<()> {
-        self.table()
+    async fn reset(&mut self, handle: Resource<DeviceHandle>) -> Result<Result<(), DeviceHandleError>> {
+        let result = self.table()
             .get_mut(&handle)?
             .handle
-            .reset()?;
+            .reset()
+            .map_err(|e| e.into());
 
-        Ok(())
+        Ok(result)
     }
 
     async fn active_configuration(&mut self, handle: Resource<DeviceHandle>) -> Result<Result<u8, DeviceHandleError>> {
@@ -45,14 +46,14 @@ impl HostDeviceHandle for USBHostWasiView {
     }
 
 
-    async fn select_configuration(&mut self, handle: Resource<DeviceHandle>, configuration: u8) -> Result<()> {
-        let _ = self.table()
+    async fn select_configuration(&mut self, handle: Resource<DeviceHandle>, configuration: u8) -> Result<Result<(), DeviceHandleError>> {
+        let result = self.table()
             .get_mut(&handle)?
             .handle
             .set_active_configuration(configuration)
-            .map_err(|e| println!("{:?}", e));
+            .map_err(|e| e.into());
 
-        Ok(())
+        Ok(result)
     }
 
     async fn claim_interface(&mut self, handle: Resource<DeviceHandle>, interface: u8) -> Result<Result<(), DeviceHandleError>> {
@@ -75,78 +76,78 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(())
     }
 
-    async fn write_interrupt(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, data: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
+    async fn write_interrupt(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, data: Vec<u8>, timeout: u64) -> Result<Result<u64, DeviceHandleError>> {
         let result = self.table()
             .get_mut(&handle)?
             .handle
-            .write_interrupt(endpoint, &data, DEFAULT_TIMEOUT)
+            .write_interrupt(endpoint, &data, Duration::from_nanos(timeout))
             .map_err(|e| e.into())
             .map(|a| a as u64);
 
         Ok(result)
     }
 
-    async fn write_bulk(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, data: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
+    async fn write_bulk(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, data: Vec<u8>, timeout: u64) -> Result<Result<u64, DeviceHandleError>> {
         let result = self.table()
             .get_mut(&handle)?
             .handle
-            .write_bulk(endpoint, &data, DEFAULT_TIMEOUT)
+            .write_bulk(endpoint, &data, Duration::from_nanos(timeout))
             .map_err(|e| e.into())
             .map(|a| a as u64);
 
         Ok(result)
     }
 
-    async fn write_control(&mut self, handle: Resource<DeviceHandle>, request_type: u8, request: u8, value: u16, index: u16, buf: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
+    async fn write_control(&mut self, handle: Resource<DeviceHandle>, request_type: u8, request: u8, value: u16, index: u16, buf: Vec<u8>, timeout: u64) -> Result<Result<u64, DeviceHandleError>> {
         let result = self.table()
             .get_mut(&handle)?
             .handle
-            .write_control(request_type, request, value, index, &buf, DEFAULT_TIMEOUT)
+            .write_control(request_type, request, value, index, &buf, Duration::from_nanos(timeout))
             .map_err(|e| e.into())
             .map(|a| a as u64);
 
         Ok(result)
     }
 
-    async fn read_control(&mut self, handle: Resource<DeviceHandle>, request_type: u8, request: u8, value: u16, index: u16, max_size: u16) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+    async fn read_control(&mut self, handle: Resource<DeviceHandle>, request_type: u8, request: u8, value: u16, index: u16, max_size: u16, timeout: u64) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
         let mut buf: Vec<u8> = vec![0; 10];
         let result = self.table()
             .get_mut(&handle)?
             .handle
-            .read_control(request_type, request, value, index, &mut buf, DEFAULT_TIMEOUT)
+            .read_control(request_type, request, value, index, &mut buf, Duration::from_nanos(timeout))
             .map_err(|e| e.into())
             .map(|a| a as u64);
 
         Ok(result.map(|bytes_read| (bytes_read, buf)))
     }
 
-    async fn write_isochronous(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, data: Vec<u8>) -> Result<Result<u64, DeviceHandleError>> {
+    async fn write_isochronous(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, data: Vec<u8>, timeout: u64) -> Result<Result<u64, DeviceHandleError>> {
         todo!()
     }
 
-    async fn read_isochronous(&mut self, handle: Resource<DeviceHandle>, endpoint: u8) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+    async fn read_isochronous(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, timeout: u64) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
         todo!()
     }
 
 
-    async fn read_bulk(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, max_size: u16) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+    async fn read_bulk(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, max_size: u64, timeout: u64) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
         let mut buffer: Vec<u8> = vec![0; max_size as usize];
         let result = self.table()
             .get_mut(&handle)?
             .handle
-            .read_bulk(endpoint, &mut buffer, DEFAULT_TIMEOUT)
+            .read_bulk(endpoint, &mut buffer, Duration::from_nanos(timeout))
             .map_err(|e| e.into())
             .map(|a| a as u64);
 
         Ok(result.map(|a| (a, buffer)))
     }
 
-    async fn read_interrupt(&mut self, handle: Resource<DeviceHandle>, endpoint: u8) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+    async fn read_interrupt(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, timeout: u64) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
         let mut buf = [0; 256];
         let result = self.table()
             .get_mut(&handle)?
             .handle
-            .read_interrupt(endpoint, &mut buf, DEFAULT_TIMEOUT)
+            .read_interrupt(endpoint, &mut buf, Duration::from_nanos(timeout))
             .map_err(|e| e.into())
             .map(|a| a as u64);
 

@@ -1,13 +1,26 @@
-use std::{io::{self, Read, Seek, Write}, time::Duration};
+use std::{io::{self, Read, Seek, Write}, time::{Duration, Instant}};
 use anyhow::{anyhow, Result};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use rusb::{request_type, Context, DeviceHandle, Direction, TransferType, UsbContext};
 
 use crate::command_wrapper::{CBWDirection, CSWStatus, CommandBlockWrapper, CommandStatusWrapper, DeviceCapacity};
 
+#[cfg(not(target_arch = "wasm32"))]
+use rusb::{request_type, Context, DeviceHandle, Direction, TransferType, UsbContext};
+
+#[cfg(target_arch = "wasm32")]
+use crate::bindings::component::usb::{descriptors::*, usb::*};
+
+
+// use
+
 pub struct MassStorageDevice {
     pub capacity: DeviceCapacity,
+
+    #[cfg(not(target_arch = "wasm32"))]
     device_handle: DeviceHandle<Context>,
+    #[cfg(target_arch = "wasm32")]
+    device_handle: DeviceHandle,
+
     interface_number: u8,
     endpoint_in: u8,
     endpoint_out: u8,
@@ -15,7 +28,11 @@ pub struct MassStorageDevice {
     tag: u32
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 const DURATION: Duration = Duration::from_secs(1);
+
+#[cfg(target_arch = "wasm32")]
+const DURATION: u64 = 1_000_000_000; // 1 second
 
 impl MassStorageDevice {
     fn increase_tag(&mut self) -> u32 {
@@ -23,6 +40,7 @@ impl MassStorageDevice {
         self.tag
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Result<Self> {
         let context = rusb::Context::new().unwrap();
         let device = context
@@ -43,13 +61,11 @@ impl MassStorageDevice {
         let interface = configuration
             .interfaces()
             .find_map(|i| {
-                let res = i.descriptors().find(|i| i.class_code() == 0x08 && i.protocol_code() == 0x50);
-                println!("{}", i.number());
-                res
+                i.descriptors().find(|i| i.class_code() == 0x08 && i.protocol_code() == 0x50)
             })
             .ok_or(anyhow!("No mass storage interface found."))?;
 
-        println!("{}", interface.interface_number());
+        // println!("{}", interface.interface_number());
         let endpoint_in = interface
             .endpoint_descriptors()
             .find(|e| e.transfer_type() == TransferType::Bulk && e.direction() == Direction::In)
@@ -89,6 +105,65 @@ impl MassStorageDevice {
         Ok(_self)
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn new() -> Result<Self> {
+        let devices = UsbDevice::enumerate();
+
+        let (device, interface) = devices
+            .iter()
+            .find_map(|device| {
+                let interface = device.configurations()
+                    .unwrap()[0]
+                    .interfaces
+                    .iter()
+                    .find(|i| i.class_code == 0x08 && i.protocol == 0x50)
+                    .map(|i| i.to_owned());
+
+                interface.map(|i| (device, i))
+            })
+            .expect("No mass storage interface found.");
+
+        // println!("{}", interface.number);
+        let endpoint_in = interface
+            .endpoint_descriptors
+            .iter()
+            .find(|e| e.transfer_type == TransferType::Bulk && e.direction == Direction::In)
+            .ok_or(anyhow!("No Bulk In Endpoint found,"))?;
+
+        let endpoint_out = interface
+            .endpoint_descriptors
+            .iter()
+            .find(|e| e.transfer_type == TransferType::Bulk && e.direction == Direction::Out)
+            .ok_or(anyhow!("No Bulk Out Endpoint found,"))?;
+
+        let mut handle = device.open()?;
+        handle.reset()?;
+        handle.select_configuration(0)?;
+
+        // Claim interface with bulk endpoints
+        handle.claim_interface(interface.number)?;
+
+        let mut _self = Self {
+            device_handle: handle,
+            interface_number: interface.number,
+            seek_position: 0,
+            endpoint_in: endpoint_in.address,
+            endpoint_out: endpoint_out.address,
+            tag: 0,
+            capacity: Default::default()
+        };
+
+        if !_self.reset() {
+            return Err(anyhow!("Could not reset device"));
+        };
+
+        assert!(_self.test_unit_ready()?);
+
+        _self.capacity = _self.read_capacity()?;
+
+        Ok(_self)
+    }
+
     fn test_unit_ready(&mut self) -> Result<bool> {
         self.send_over_usb(vec![0; 6], None)
             .map(|status| status.status == CSWStatus::Passed)
@@ -105,7 +180,9 @@ impl MassStorageDevice {
     }
 
     fn reset(&self) -> bool {
-        let request_type = request_type(Direction::Out, rusb::RequestType::Class, rusb::Recipient::Interface);
+        // let request_type = request_type(Direction::Out, rusb::RequestType::Class, rusb::Recipient::Interface);
+        // dbg!(request_type);
+        let request_type = 33;
         self.device_handle
             .write_control(request_type, 0xFF, 0, self.interface_number.into(), &[], DURATION)
             .is_ok()
@@ -144,6 +221,7 @@ impl MassStorageDevice {
         Ok(tag)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn receive_csw(&self, tag: u32) -> Result<CommandStatusWrapper> {
         let mut status_data: [u8; 13] = [0; 13];
         self.device_handle.read_bulk(self.endpoint_in, &mut status_data, DURATION)?;
@@ -156,12 +234,47 @@ impl MassStorageDevice {
         Ok(status)
     }
 
+    #[cfg(target_arch = "wasm32")]
+    fn receive_csw(&self, tag: u32) -> Result<CommandStatusWrapper> {
+        let mut status_data: [u8; 13] = [0; 13];
+        let (bytes_written, data) = self.device_handle.read_bulk(self.endpoint_in, 13, DURATION)?;
+        status_data.copy_from_slice(&data);
+
+        let status_bytes: Bytes = status_data.to_vec().into();
+        let status = CommandStatusWrapper::from(status_bytes);
+
+        assert!(status.tag == tag && status.status == CSWStatus::Passed);
+
+        Ok(status)
+    }
+
+
+    #[cfg(not(target_arch = "wasm32"))]
     fn receive_over_usb(&mut self, cbwcb: Vec<u8>, data: &mut [u8]) -> Result<CommandStatusWrapper> {
+        // let now = Instant::now();
+
         let tag = self.send_cbw_request(CBWDirection::In, data.len() as u32, cbwcb)?;
 
         self.device_handle.read_bulk(self.endpoint_in, data, DURATION)?;
 
         self.receive_csw(tag)
+        // dbg!(now.elapsed());
+        // result
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn receive_over_usb(&mut self, cbwcb: Vec<u8>, data: &mut [u8]) -> Result<CommandStatusWrapper> {
+        // let now = Instant::now();
+        let max_size = data.len() as u32;
+        let tag = self.send_cbw_request(CBWDirection::In, max_size, cbwcb)?;
+
+        let (bytes_received, bytes) = self.device_handle.read_bulk(self.endpoint_in, max_size as u64, DURATION)?;
+
+        data[..bytes_received as usize].copy_from_slice(&bytes);
+
+        self.receive_csw(tag)
+        // dbg!(now.elapsed());
+        // result
     }
 
     fn send_over_usb(&mut self, cbwcb: Vec<u8>, data: Option<&[u8]>) -> Result<CommandStatusWrapper> {

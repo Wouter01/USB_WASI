@@ -9,6 +9,12 @@ use tokio::{task::AbortHandle, time::sleep};
 
 use crate::bindings::component::usb::{usb::UsbDevice, events::DeviceConnectionEvent};
 
+#[cfg(not(target_arch = "wasm32"))]
+const DURATION: Duration = Duration::from_secs(10);
+
+#[cfg(target_arch = "wasm32")]
+const DURATION: u64 = 1_000_000_000; // 1 second
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
     let mut process_task_aborthandle: Option<AbortHandle> = None;
@@ -100,7 +106,7 @@ async fn process_input_task_write_to_controller(handle: DeviceHandle, endpoint_o
         let num = intensity.0;
 
         let rumble_data: [u8; 5] = [0x05, num, num, num, num];
-        _ = handle.write_interrupt(endpoint_out_address, &rumble_data);
+        _ = handle.write_interrupt(endpoint_out_address, &rumble_data, DURATION);
     }
 
     let elapsed_time = now.elapsed();
@@ -116,7 +122,7 @@ async fn process_input_task_read_controller_state(handle: DeviceHandle, endpoint
         let now = Instant::now();
         // Read state of controller.
         let data = handle
-            .read_interrupt(endpoint_address)
+            .read_interrupt(endpoint_address, DURATION)
             .map_err(|e| e.to_string());
 
         let elapsed_time = now.elapsed();
@@ -130,7 +136,7 @@ async fn process_input_task_read_controller_state(handle: DeviceHandle, endpoint
             // When a shoulder trigger is pushed harder, the controller will rumble harder at that side.
             // Info about rumble data: https://github.com/FIX94/Nintendont/issues/1080
             let rumble_data: [u8; 5] = [0x05, stadia_state.l2_position, stadia_state.l2_position, stadia_state.r2_position, stadia_state.r2_position];
-            _ = handle.write_interrupt(endpoint_out_address, &rumble_data);
+            _ = handle.write_interrupt(endpoint_out_address, &rumble_data, DURATION);
         }
 
         tokio::task::yield_now().await;

@@ -8,6 +8,12 @@ use bindings::component::usb::types::{Direction, TransferType};
 
 use crate::bindings::component::usb::usb::UsbDevice;
 
+#[cfg(not(target_arch = "wasm32"))]
+const DURATION: Duration = Duration::from_secs(1);
+
+#[cfg(target_arch = "wasm32")]
+const DURATION: u64 = 1_000_000_000; // 1 second
+
 fn main() -> Result<()> {
     let devices = UsbDevice::enumerate();
 
@@ -53,7 +59,7 @@ fn main() -> Result<()> {
     }
 
     let buffer: [u8; 10] = [0x01; 10];
-    handle.write_control(33, 0x22, 0x01, interface_descriptor.number as u16, &buffer)
+    handle.write_control(33, 0x22, 0x01, interface_descriptor.number as u16, &buffer, DURATION)
         .map_err(|e| e.to_string());
 
     println!("Connected to controller");
@@ -79,7 +85,7 @@ fn main() -> Result<()> {
         let now = Instant::now();
         for _ in 0..10000 {
             let one_measure = Instant::now();
-            let (bytes_written, data2) = handle.read_bulk(endpoint_in.address, max_packet_size)?;
+            let (bytes_written, data2) = handle.read_bulk(endpoint_in.address, max_packet_size as u64, DURATION)?;
             let elapsed = one_measure.elapsed();
             let cutted = &data2[0..(bytes_written as _)];
             let str = String::from_utf8(cutted.to_vec());

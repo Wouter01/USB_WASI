@@ -1,0 +1,8 @@
+package component:usb-mass-storage;
+
+world root {
+	import component:usb/types@0.2.0;
+	import component:usb/usb@0.2.0;
+	import component:usb/events@0.2.0;
+	import component:usb/descriptors@0.2.0;
+}

@@ -3,13 +3,27 @@ name = "usb-mass-storage-native"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[package.metadata.component]
+package = "component:usb-mass-storage-example"
+
+[package.metadata.component.target]
+path = "wit"
+
+[package.metadata.component.target.dependencies]
+"component:usb" = { path = "../../WIT/wit" }
 
 [dependencies]
 anyhow = "1.0.72"
-rusb = "0.9.3"
 bitflags = "2.5.0"
 exfat = "0.1.0"
 bytes = "1.6.0"
 mbrman = "0.5.2"
 slice = "0.0.4"
+
+# Specify dependencies for when the target is WASI
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wit-bindgen-rt = "0.24.0"
+
+# Specify dependencies for when the target is not WASI
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rusb = "0.9.3"
