@@ -1,22 +1,23 @@
 [package]
-name = "usb-component-wasi-guest"
+name = "usb-stadia"
 version = "0.1.0"
 edition = "2021"
 
 [package.metadata.component]
-package = "component:usb-component-wasi-guest"
+package = "component:usb-component-wasi-stadia"
 
 [package.metadata.component.target]
 path = "wit"
 
 [package.metadata.component.target.dependencies]
-"component:usb" = { path = "../usb_wasi_host/wit" }
+"component:usb" = { path = "../../WIT/wit" }
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 wit-bindgen-rt = "0.24.0"
-wit-bindgen = { version = "0.24.0", default-features = false, features = ["realloc"] }
 async-trait = "0.1.74"
 tokio = { version = "1.35.0", features = [ "sync", "macros" ,"io-util","rt","time" ] }
 anyhow = "1.0.72"
+bitflags = "2.5.0"

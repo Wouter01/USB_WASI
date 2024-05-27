@@ -1,16 +1,11 @@
 [workspace]
 members = [
-	"usb_component_wasi_stadia",
-	"usb_component_wasi_arduino",
-	"usb_wasi_host",
-	"examples/usb_stadia_native",
-	"examples/usb_arduino_native",
-	"examples/usb_mass_storage_native"
-, "test2"]
-
-exclude = [
-	"usb_component_wasi"
+    "usb_wasi_host",
+	"examples/usb_stadia",
+	"examples/usb_arduino",
+	"examples/usb_mass_storage"
 ]
+
 resolver = "2"
 
 # [profile.release]

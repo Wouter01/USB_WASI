@@ -13,8 +13,6 @@ pub struct DeviceHandle {
     pub handle: rusb::DeviceHandle<rusb::Context>
 }
 
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
-
 #[async_trait]
 impl HostDeviceHandle for USBHostWasiView {
     fn drop(&mut self, rep: Resource<DeviceHandle>) -> Result<()>  {
@@ -110,7 +108,7 @@ impl HostDeviceHandle for USBHostWasiView {
     }
 
     async fn read_control(&mut self, handle: Resource<DeviceHandle>, request_type: u8, request: u8, value: u16, index: u16, max_size: u16, timeout: u64) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
-        let mut buf: Vec<u8> = vec![0; 10];
+        let mut buf: Vec<u8> = vec![0; max_size as usize];
         let result = self.table()
             .get_mut(&handle)?
             .handle
@@ -121,11 +119,11 @@ impl HostDeviceHandle for USBHostWasiView {
         Ok(result.map(|bytes_read| (bytes_read, buf)))
     }
 
-    async fn write_isochronous(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, data: Vec<u8>, timeout: u64) -> Result<Result<u64, DeviceHandleError>> {
+    async fn write_isochronous(&mut self, _: Resource<DeviceHandle>, _: u8, _: Vec<u8>, _: u64) -> Result<Result<u64, DeviceHandleError>> {
         todo!()
     }
 
-    async fn read_isochronous(&mut self, handle: Resource<DeviceHandle>, endpoint: u8, timeout: u64) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
+    async fn read_isochronous(&mut self, _: Resource<DeviceHandle>, _: u8, _: u64) -> Result<Result<(u64, Vec<u8>), DeviceHandleError>> {
         todo!()
     }
 

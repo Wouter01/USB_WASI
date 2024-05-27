@@ -1,5 +1,5 @@
 [package]
-name = "usb_wasi_host"
+name = "usb-wasi-host"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,6 +16,7 @@ anyhow = "1.0.72"
 async-trait = "0.1.74"
 tokio = { version = "1.35.0", features = [ "full" ] }
 cap-std = "3.0.0"
+memory-stats = "1.1.0"
 
 futures = "0.3.29"
 rusb = "0.9.3"

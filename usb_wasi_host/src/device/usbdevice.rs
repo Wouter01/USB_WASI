@@ -19,9 +19,8 @@ pub struct USBDevice {
     pub device: rusb::Device<rusb::Context>,
 }
 
-pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
-
 impl USBDevice {
+    #[allow(dead_code)]
     fn get_language(handle: &rusb::DeviceHandle<rusb::Context>, timeout: Duration) -> Result<rusb::Language> {
         let languages = handle.read_languages(timeout)?;
         let language = languages
@@ -41,10 +40,11 @@ impl USBDevice {
 }
 
 impl USBDevice {
-    fn read_property<S>(&self, perform: impl FnOnce(&rusb::Device<rusb::Context>, RusbDeviceHandle<rusb::Context>, &Language) -> Result<S, rusb::Error>) -> Result<S, DeviceHandleError> {
+    #[allow(dead_code)]
+    fn read_property<S>(&self, timeout: Duration, perform: impl FnOnce(&rusb::Device<rusb::Context>, RusbDeviceHandle<rusb::Context>, &Language) -> Result<S, rusb::Error>) -> Result<S, DeviceHandleError> {
         let device = &self.device;
         let handle = device.open().map_err(DeviceHandleError::from)?;
-        let languages = handle.read_languages(DEFAULT_TIMEOUT).map_err(DeviceHandleError::from)?;
+        let languages = handle.read_languages(timeout).map_err(DeviceHandleError::from)?;
         let language = languages
             .first()
             .ok_or(DeviceHandleError::Other)?;

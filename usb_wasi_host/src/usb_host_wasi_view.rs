@@ -2,14 +2,13 @@ use std::collections::HashSet;
 use std::path::Path;
 use anyhow::Result;
 use async_trait::async_trait;
-use tokio::sync::mpsc::error::TryRecvError;
 use wasmtime_wasi::{DirPerms, FilePerms, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
-use crate::bindings::__with_name1;
-use crate::{events, AllowedUSBDevices, USBDeviceIdentifier};
+use crate::{events, AllowedUSBDevices};
 use crate::bindings::component::usb;
 use crate::bindings::component::usb::events::{Host as EventsHost, DeviceConnectionEvent as WasmDeviceConnectionEvent};
 
+#[allow(dead_code)]
 pub(crate) struct USBHostWasiView {
     table: ResourceTable,
     ctx: WasiCtx,

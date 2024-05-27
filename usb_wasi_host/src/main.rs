@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Parser;
 use usb_host_wasi_view::USBHostWasiView;
 use wasmtime_wasi::bindings::Command;
@@ -125,8 +125,9 @@ async fn main() -> Result<()> {
         AllowedUSBDevices::Allowed(parsed.usb_devices)
     };
 
-    app.start(allowed_devices).await?
-        .map_err(|_| anyhow!("Failed to run component."))?;
+    let result = app.start(allowed_devices.to_owned()).await;
+
+    dbg!(result.unwrap().unwrap());
 
     exit(0);
 }
